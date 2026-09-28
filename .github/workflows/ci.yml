@@ -19,8 +19,8 @@ jobs:
           distribution: 'temurin'
 
       - name: Run tests
-        run: ./gradlew test
+        run: TP-Furbo/gradlew test
 
       # SonarCloud
       # - name: SonarCloud
-      #   run: ./gradlew sonar
+      #   run: TP-Furbo/gradlew sonar
