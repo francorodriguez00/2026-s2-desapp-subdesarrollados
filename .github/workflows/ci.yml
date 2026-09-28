@@ -1,4 +1,4 @@
-name: Tests
+name: Tests and SonarCloud Analysis
 
 on:
   pull_request:
@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Requerido por SonarCloud para analizar todo el historial
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -28,6 +30,8 @@ jobs:
       - name: Run tests
         run: ./gradlew test
 
-      # SonarCloud
-      # - name: SonarCloud
-      #   run: TP-Furbo/gradlew sonar
+      - name: SonarCloud Scan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./gradlew sonar
