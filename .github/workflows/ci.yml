@@ -8,6 +8,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: ./TP-Furbo
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,10 +26,10 @@ jobs:
         run: chmod +x TP-Furbo/gradlew
 
       - name: Run tests
-        run: TP-Furbo/gradlew test
+        run: .gradlew test
       
       - name: Compilar
-        run: TP-Furbo/gradlew build
+        run: ./gradlew build
 
       # SonarCloud
       # - name: SonarCloud
