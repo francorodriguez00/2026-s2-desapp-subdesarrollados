@@ -19,13 +19,13 @@ jobs:
           distribution: 'temurin'
 
       - name: Dar permisos a Gradle
-        run: chmod +x ./gradlew
+        run: chmod +x TP-Furbo/gradlew
 
       - name: Run tests
         run: TP-Furbo/gradlew test
       
       - name: Compilar
-        run: ./gradlew build
+        run: TP-Furbo/gradlew build
 
       # SonarCloud
       # - name: SonarCloud
