@@ -23,7 +23,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Dar permisos a Gradle
-        run: chmod +x TP-Furbo/gradlew
+        run: chmod +x ./gradlew
 
       - name: Run tests
         run: .gradlew test
