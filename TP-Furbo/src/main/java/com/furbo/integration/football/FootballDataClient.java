@@ -1,12 +1,18 @@
 package com.furbo.integration.football;
 
+import com.furbo.integration.football.dto.LeagueResponseDTO;
 import com.furbo.integration.football.dto.PlayerDTO;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class FootballDataClient implements FootballDataProvider {
@@ -20,20 +26,34 @@ public class FootballDataClient implements FootballDataProvider {
         this.apiKey = apiKey;
     }
 
-    // Método de ejemplo para fetch
-    public PlayerDTO[] getPlayersForLeague(String leagueCode) {
+    @Override
+    public List<PlayerDTO> getPlayersForLeague(String leagueCode) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Auth-Token", apiKey);
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        
-        // Simulación de Throttling simple (debería ser más robusto en producción)
-        try { Thread.sleep(1000); } catch (InterruptedException e) {}
 
-        return restTemplate.exchange(
-            baseUrl + "/competitions/" + leagueCode + "/teams", 
-            HttpMethod.GET, 
-            entity, 
-            PlayerDTO[].class
-        ).getBody();
+        try {
+            ResponseEntity<LeagueResponseDTO> response = restTemplate.exchange(
+                    baseUrl + "/competitions/" + leagueCode + "/teams",
+                    HttpMethod.GET,
+                    entity,
+                    LeagueResponseDTO.class
+            );
+
+            LeagueResponseDTO body = response.getBody();
+
+            if (body != null && body.getTeams() != null) {
+                // Navegamos por los equipos y juntamos todos los jugadores en una sola lista
+                return body.getTeams().stream()
+                        .filter(team -> team.getSquad() != null)
+                        .flatMap(team -> team.getSquad().stream())
+                        .collect(Collectors.toList());
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error en liga " + leagueCode + ": " + e.getMessage());
+        }
+
+        return Collections.emptyList();
     }
 }

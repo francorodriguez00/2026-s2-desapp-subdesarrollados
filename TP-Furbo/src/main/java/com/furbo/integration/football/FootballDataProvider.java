@@ -1,7 +1,8 @@
 package com.furbo.integration.football;
 
+import com.furbo.integration.football.dto.PlayerDTO;
 import java.util.List;
 
 public interface FootballDataProvider {
-    // Methods to be defined
+    List<PlayerDTO> getPlayersForLeague(String leagueCode);
 }
