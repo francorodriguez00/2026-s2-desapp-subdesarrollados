@@ -28,7 +28,7 @@ public class UserRegistrationIntegrationTest {
         dto.setEmail("test@furbo.com");
         dto.setPassword("password123");
 
-        ResponseEntity<Void> response = restTemplate.postForEntity("/api/users/register", dto, Void.class);
+        ResponseEntity<Void> response = restTemplate.postForEntity("/auth/register", dto, Void.class);
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(userRepository.findByEmail("test@furbo.com")).isPresent();
