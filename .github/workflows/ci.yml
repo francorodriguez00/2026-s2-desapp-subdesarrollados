@@ -3,9 +3,11 @@ name: Tests and SonarCloud Analysis
 on:
   pull_request:
     branches: [ "main", "develop" ]
+    types: [ opened, synchronize, reopened ]
 
 jobs:
-  test:
+  build:
+    name: Build and Analyze
     runs-on: ubuntu-latest
 
     defaults:
@@ -13,7 +15,7 @@ jobs:
         working-directory: ./TP-Furbo
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Requerido por SonarCloud para analizar todo el historial
@@ -24,14 +26,25 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle
+
       - name: Dar permisos a Gradle
         run: chmod +x ./gradlew
 
-      - name: Run tests
-        run: ./gradlew test
-
-      - name: SonarCloud Scan
+      - name: Build, Test and SonarCloud Scan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonar
+        run: ./gradlew build sonar --info

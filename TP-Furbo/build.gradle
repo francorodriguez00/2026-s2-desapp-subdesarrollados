@@ -2,13 +2,13 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.3.0'
     id 'io.spring.dependency-management' version '1.1.5'
-    id 'org.sonarqube' version '5.1.0.4882'
+    id "org.sonarqube" version "7.5.0.8588"
 }
 
 sonar {
     properties {
-        property "sonar.projectKey", "AQUÍ_TU_PROJECT_KEY"
-        property "sonar.organization", "AQUÍ_TU_ORGANIZATION_KEY"
+        property "sonar.projectKey", "francorodriguez00_2026-s2-desapp-subdesarrollados"
+        property "sonar.organization", "francorodriguez00"
         property "sonar.host.url", "https://sonarcloud.io"
     }
 }
