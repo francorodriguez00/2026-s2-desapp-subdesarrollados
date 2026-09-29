@@ -18,9 +18,5 @@ public class UserController {
         this.userService = userService;
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<Void> register(@Valid @RequestBody UserRegistrationDTO dto) {
-        userService.register(dto);
-        return ResponseEntity.ok().build();
-    }
+
 }
