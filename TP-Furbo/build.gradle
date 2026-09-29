@@ -10,6 +10,7 @@ sonar {
         property "sonar.projectKey", "francorodriguez00_2026-s2-desapp-subdesarrollados"
         property "sonar.organization", "francorodriguez00"
         property "sonar.host.url", "https://sonarcloud.io"
+        property "sonar.coverage.exclusions", "**/config/**, **/adapter/dto/**, **/entity/**, **/model/**, **/*Application.java"
     }
 }
 
@@ -37,6 +38,8 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     testImplementation 'com.h2database:h2'
+
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0'
 }
 
 test {
