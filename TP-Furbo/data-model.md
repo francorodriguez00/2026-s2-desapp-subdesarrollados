@@ -2,22 +2,30 @@
 
 ## Entities
 
-### User
+### Player
 - `id` (Long, PK)
-- `email` (String, unique, index)
+- `externalId` (Long, unique, indexed, mapping to Football-Data ID)
 - `name` (String)
-- `password` (String, hashed)
-- `portfolio` (OneToOne relationship)
+- `team` (ManyToOne relationship to `Team`)
+- `league` (ManyToOne relationship to `League`)
+- `position` (String)
+- `nationality` (String)
+- `metrics` (Embedded or Json, prepared for future WhoScored integration)
 
-### Portfolio
+### Team
 - `id` (Long, PK)
-- `user` (OneToOne, inverse)
-- `tokens` (List of Tokens, initial empty)
+- `externalId` (Long, unique)
+- `name` (String)
+- `league` (ManyToOne)
+
+### League
+- `id` (Long, PK)
+- `externalId` (Long, unique)
+- `name` (String)
 
 ## Validation Rules
-- `email`: NotNull, Pattern(@), Unique.
-- `password`: NotNull, minLength 8.
+- `externalId`: Must be unique and present for external synchronization.
 - `name`: NotNull.
 
-## State Transitions
-- User Registered -> Portfolio Created
+## Extensibility Plan
+- The `Player` entity is designed with an extensible `metrics` field (or nullable fields) to support future WhoScored performance metrics without requiring schema refactoring.

@@ -1,16 +1,20 @@
 # Research Findings
 
-- **Hashing Implementation**: No existing hashing infrastructure found. Will design an interface `PasswordHasher` with an implementation `BCryptPasswordHasher` for production and `PlaintextPasswordHasher` for testing if needed.
-- **Project Structure**: Clean architecture established. Will create `User` and `Portfolio` models, `UserRepository` and `PortfolioRepository`, `UserService` to handle registration orchestrating both.
-- **Database**: PostgreSQL (provided via local profile).
-- **Testcontainers**: Required for integration tests.
+- **Football-Data.org Integration**: Needs a dedicated adapter following the `FootballDataProvider` interface. Must handle throttling (rate limiting) and error management explicitly.
+- **Data Model**: `Player` entity needs `externalId` (Football-Data ID), `teamId`, `leagueId`, and metadata. Must be extensible for WhoScored metrics.
+- **Persistence**: Local cache strategy required. The system reads from local database, not the external API.
+- **Sync Process**: Independent background job. No synchronous API calls during user requests.
+- **Testing**: Integration tests use H2 in-memory DB and real Football-Data API (no mocks).
+- **Environment**: Profile-based configuration for API Key and DB credentials.
 
 ## Decisions
-- Create `com.furbo.security.PasswordHasher` interface.
-- Implement `BCryptPasswordHasher` in `com.furbo.security`.
-- Register as Bean in `com.furbo.config`.
-- Automate Portfolio creation in `UserService` (transactional).
+- Create `com.furbo.integration.football.FootballDataProvider` interface.
+- Implement `FootballDataClient` adapter with throttling logic (ScheduledExecutor or similar).
+- Database: Use JPA/Hibernate mapped to `Player`, `Team`, `League` entities.
+- Job: Use Spring `@Scheduled` task for the synchronization job.
+- Mapper: Create `FootballDataMapper` to bridge the gap between API response and internal domain objects.
 
 ## Rationale
-- Decoupling hashing strategy allows easier testing and swapping of algorithms.
-- Transactional service ensures consistency between User creation and Portfolio initialization.
+- Adapter pattern ensures decoupling and future-proofing for WhoScored integration.
+- Local persistence strategy guarantees availability during API outages.
+- External ID preservation prevents duplication during incremental updates.

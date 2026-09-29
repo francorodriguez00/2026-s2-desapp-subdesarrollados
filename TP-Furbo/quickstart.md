@@ -1,22 +1,23 @@
-# Quickstart Validation Guide
+# Quickstart: Validation Guide
 
 ## Prerequisites
-- Docker Desktop
-- PostgreSQL running on localhost:5432
-- Database `tp-furbo` exists
+- PostgreSQL running locally with `furbo_db`.
+- API Key from Football-Data.org.
 
 ## Setup
-1. Configure `application-local.properties` with:
-   spring.datasource.url=jdbc:postgresql://localhost:5432/tp-furbo
-   spring.datasource.username=postgres
-   spring.datasource.password=root
+1. Configure environment variable: `FOOTBALL_DATA_API_KEY=...`
+2. Update `application-local.yml` with credentials:
+   - `spring.datasource.url: jdbc:postgresql://localhost:5432/furbo_db`
+   - `spring.datasource.username: postgres`
+   - `spring.datasource.password: root`
 
-## Run Scenarios
-1. Register user:
-   curl -X POST http://localhost:8080/users -d '{"email":"test@test.com", "name":"Test", "password":"password"}' -H "Content-Type: application/json"
-
-2. Verify Portfolio existence:
-   - Check database `portfolios` table for row with `user_id` equal to created user.
+## Validation Scenarios
+1. **Sync Job Trigger**: Run the batch job manually via CLI or Debugger.
+   - *Expected*: Data is fetched from API and persisted in `player`, `team`, `league` tables.
+2. **API Failure Resilience**: Disable network access (or simulate API down). Query the catalogue endpoint.
+   - *Expected*: Catalogue returns cached data from the local database, no error propogated.
+3. **Throttling Verification**: Monitor logs during sync.
+   - *Expected*: Log entries show delay between requests to Football-Data API.
 
 ## Running Tests
-- ./gradlew test
+- Use `gradle test` to execute integration tests (using H2).

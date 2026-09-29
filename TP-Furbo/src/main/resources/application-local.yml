@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/furbo_db
+    username: postgres
+    password: root
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+football-data:
+  api-key: ${FOOTBALL_DATA_API_KEY}
