@@ -16,14 +16,14 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Permitir acceso público a Swagger y OpenAPI
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/swagger-ui.html",
+                                "/api/users/register",
+                                "/api/users/**"
                         ).permitAll()
-                        // El resto de la API requerirá autenticación
-                        .anyRequest().permitAll() // O .authenticated() cuando pongamos JWT
+                        .anyRequest().authenticated()
                 );
 
         return http.build();
