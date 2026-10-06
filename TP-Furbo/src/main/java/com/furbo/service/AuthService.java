@@ -2,6 +2,7 @@ package com.furbo.service;
 
 import com.furbo.adapter.dto.LoginRequestDTO;
 import com.furbo.adapter.dto.RegisterRequestDTO;
+import com.furbo.exceptions.InvalidCredentialsException;
 import com.furbo.model.Portfolio;
 import com.furbo.model.User;
 import com.furbo.repository.PortfolioRepository;
@@ -47,6 +48,6 @@ public class AuthService {
         if (userOpt.isPresent() && passwordHasher.verify(loginRequest.getPassword(), userOpt.get().getPassword())) {
             return jwtService.generateToken(userOpt.get().getEmail());
         }
-        throw new RuntimeException("Invalid credentials");
+        throw new InvalidCredentialsException("Invalid credentials");
     }
 }
