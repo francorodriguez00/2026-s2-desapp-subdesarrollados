@@ -7,7 +7,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class UserRegistrationDTO {
+public class RegisterRequestDTO {
     @NotBlank
     @Email
     private String email;
