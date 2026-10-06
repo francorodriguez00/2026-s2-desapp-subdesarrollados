@@ -1,7 +1,11 @@
 package com.furbo.unit;
 
 import com.furbo.adapter.dto.LoginRequestDTO;
+import com.furbo.adapter.dto.RegisterRequestDTO;
+import com.furbo.exceptions.InvalidCredentialsException;
+import com.furbo.model.Portfolio;
 import com.furbo.model.User;
+import com.furbo.repository.PortfolioRepository;
 import com.furbo.repository.UserRepository;
 import com.furbo.security.JwtService;
 import com.furbo.security.PasswordHasher;
@@ -30,6 +34,9 @@ public class AuthServiceTest {
     @Mock
     private PasswordHasher passwordHasher;
 
+    @Mock
+    private PortfolioRepository portfolioRepository;
+
     @InjectMocks
     private AuthService authService;
 
@@ -48,6 +55,19 @@ public class AuthServiceTest {
     }
 
     @Test
+    void shouldRegisterUserSuccessfully() {
+        RegisterRequestDTO registerRequest = new RegisterRequestDTO();
+        registerRequest.setEmail("newuser@furbo.com");
+        registerRequest.setPassword("rawPassword");
+
+        when(passwordHasher.hash("rawPassword")).thenReturn("hashedPassword");
+
+        authService.register(registerRequest);
+
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
     void shouldReturnTokenWhenCredentialsAreValid() {
         when(userRepository.findByEmail(loginRequest.getEmail())).thenReturn(Optional.of(user));
         when(passwordHasher.verify(loginRequest.getPassword(), user.getPassword())).thenReturn(true);
@@ -63,7 +83,7 @@ public class AuthServiceTest {
     void shouldThrowExceptionWhenUserNotFound() {
         when(userRepository.findByEmail(loginRequest.getEmail())).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> authService.login(loginRequest));
+        assertThrows(InvalidCredentialsException.class, () -> authService.login(loginRequest));
         verifyNoInteractions(jwtService);
     }
 
@@ -72,7 +92,16 @@ public class AuthServiceTest {
         when(userRepository.findByEmail(loginRequest.getEmail())).thenReturn(Optional.of(user));
         when(passwordHasher.verify(loginRequest.getPassword(), user.getPassword())).thenReturn(false);
 
-        assertThrows(RuntimeException.class, () -> authService.login(loginRequest));
+        assertThrows(InvalidCredentialsException.class, () -> authService.login(loginRequest));
         verifyNoInteractions(jwtService);
+    }
+
+    @Test
+    void shouldThrowInvalidCredentialsWhenUserNotFound() {
+        when(userRepository.findByEmail(loginRequest.getEmail())).thenReturn(Optional.empty());
+
+        assertThrows(InvalidCredentialsException.class, () -> authService.login(loginRequest));
+
+        verifyNoInteractions(passwordHasher, jwtService);
     }
 }

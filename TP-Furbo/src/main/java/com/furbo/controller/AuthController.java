@@ -2,7 +2,7 @@ package com.furbo.controller;
 
 import com.furbo.adapter.dto.LoginRequestDTO;
 import com.furbo.adapter.dto.LoginResponseDTO;
-import com.furbo.adapter.dto.UserRegistrationDTO;
+import com.furbo.adapter.dto.RegisterRequestDTO;
 import com.furbo.service.AuthService;
 import com.furbo.service.UserService;
 import jakarta.validation.Valid;
@@ -18,18 +18,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 public class AuthController {
 
-    private final UserService userService;
-
     @Autowired
     private AuthService authService;
 
-    public AuthController(UserService userService) {
-        this.userService = userService;
-    }
+    public AuthController() {}
 
     @PostMapping("/register")
-    public ResponseEntity<Void> register(@Valid @RequestBody UserRegistrationDTO dto) {
-        userService.register(dto);
+    public ResponseEntity<Void> register(@Valid @RequestBody RegisterRequestDTO dto) {
+        authService.register(dto);
         return ResponseEntity.ok().build();
     }
 
