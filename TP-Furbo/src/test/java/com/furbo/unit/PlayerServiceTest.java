@@ -1,5 +1,9 @@
 package com.furbo.unit;
 
+import com.furbo.adapter.dto.external.CompetitionTeamsDTO;
+import com.furbo.adapter.dto.external.PlayerDTO;
+import com.furbo.adapter.dto.external.TeamDTO;
+import com.furbo.adapter.dto.external.TeamDetailDTO;
 import com.furbo.model.Player;
 import com.furbo.repository.PlayerRepository;
 import com.furbo.service.PlayerService;
@@ -10,7 +14,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,15 +36,34 @@ class PlayerServiceTest {
     }
 
     @Test
-    void getPlayers_WhenDatabaseIsEmpty_FetchesFromApi() {
+    void getPlayers_WhenDatabaseIsEmpty_FetchesFromApi() throws InterruptedException {
         when(playerRepository.count()).thenReturn(0L);
-        // Evitar que el test intente llamar a la API real, mockeando la llamada a la liga
-        // Esto es un test unitario simple que verifica la lógica de delegación
         
-        playerService.getPlayers();
-
-        verify(playerRepository, times(1)).count();
-        // Si entra en fetchAndSavePlayers, llamará a restTemplate
+        CompetitionTeamsDTO comp = new CompetitionTeamsDTO();
+        TeamDTO team = new TeamDTO();
+        team.setId(1L);
+        comp.setTeams(List.of(team));
+        
+        when(restTemplate.getForObject(contains("/competitions/"), eq(CompetitionTeamsDTO.class)))
+                .thenReturn(comp);
+        
+        TeamDetailDTO detail = new TeamDetailDTO();
+        detail.setName("Team A");
+        PlayerDTO p = new PlayerDTO();
+        p.setName("Player A");
+        detail.setSquad(List.of(p));
+        
+        when(restTemplate.getForObject(contains("/teams/1"), eq(TeamDetailDTO.class)))
+                .thenReturn(detail);
+        
+        when(playerRepository.findAll()).thenReturn(List.of(
+            Player.builder().name("Player A").build()
+        ));
+        
+        List<Player> result = playerService.getPlayers();
+        
+        assertFalse(result.isEmpty());
+        verify(playerRepository, times(1)).saveAll(anyList());
     }
 
     @Test

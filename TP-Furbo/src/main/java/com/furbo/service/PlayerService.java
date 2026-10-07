@@ -31,7 +31,9 @@ public class PlayerService {
         return playerRepository.findAll();
     }
 
-    private void fetchAndSavePlayers() {
+    // Cambiado de privado a público para facilitar el testeo si es necesario, 
+    // o ajustado para asegurar que saveAll se llama.
+    protected void fetchAndSavePlayers() {
         List<Player> allPlayers = new ArrayList<>();
         
         for (String leagueCode : LEAGUES) {
@@ -43,7 +45,14 @@ public class PlayerService {
                     // Procesar equipos (lotes limitados para no exceder rate limits)
                     for (int i = 0; i < competition.getTeams().size(); i++) {
                         // Sleep breve cada 5 equipos
-                        if (i > 0 && i % 5 == 0) Thread.sleep(6000);
+                        if (i > 0 && i % 5 == 0) {
+                            try {
+                                Thread.sleep(6000);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                                throw new RuntimeException("Thread interrupted during API fetch", e);
+                            }
+                        }
                         
                         var team = competition.getTeams().get(i);
                         TeamDetailDTO teamDetail = restTemplate.getForObject(
