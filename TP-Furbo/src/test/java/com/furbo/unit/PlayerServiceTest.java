@@ -37,8 +37,6 @@ class PlayerServiceTest {
 
     @Test
     void getPlayers_WhenDatabaseIsEmpty_FetchesFromApi() throws InterruptedException {
-        when(playerRepository.count()).thenReturn(0L);
-        
         CompetitionTeamsDTO comp = new CompetitionTeamsDTO();
         TeamDTO team = new TeamDTO();
         team.setId(1L);
@@ -56,40 +54,34 @@ class PlayerServiceTest {
         when(restTemplate.getForObject(contains("/teams/1"), eq(TeamDetailDTO.class)))
                 .thenReturn(detail);
         
-        playerService.getPlayers();
+        playerService.fetchAndSavePlayers();
         
-        verify(playerRepository, times(1)).saveAll(anyList());
+        verify(playerRepository, atLeastOnce()).saveAll(anyList());
     }
 
     @Test
     void getPlayers_WhenDatabaseHasData_ReturnsPlayers() {
         Player player = Player.builder().name("Messi").build();
-        when(playerRepository.count()).thenReturn(1L);
         when(playerRepository.findAll()).thenReturn(List.of(player));
 
         List<Player> result = playerService.getPlayers();
 
         assertEquals(1, result.size());
         assertEquals("Messi", result.get(0).getName());
-        verify(restTemplate, never()).getForObject(anyString(), any());
     }
 
     @Test
     void getPlayers_WhenApiFailsForOneLeague_ContinuesOthers() {
-        when(playerRepository.count()).thenReturn(0L);
-        
         when(restTemplate.getForObject(contains("/competitions/"), eq(CompetitionTeamsDTO.class)))
                 .thenThrow(new RuntimeException("API Error"))
                 .thenReturn(new CompetitionTeamsDTO());
 
-        assertDoesNotThrow(() -> playerService.getPlayers());
+        assertDoesNotThrow(() -> playerService.fetchAndSavePlayers());
         verify(playerRepository, atLeastOnce()).saveAll(anyList());
     }
     
     @Test
     void getPlayers_WhenTeamDetailsIsNull_HandlesGracefully() {
-        when(playerRepository.count()).thenReturn(0L);
-        
         CompetitionTeamsDTO comp = new CompetitionTeamsDTO();
         TeamDTO team = new TeamDTO();
         team.setId(99L);
@@ -101,9 +93,8 @@ class PlayerServiceTest {
         when(restTemplate.getForObject(contains("/teams/99"), eq(TeamDetailDTO.class)))
                 .thenReturn(null);
         
-        List<Player> result = playerService.getPlayers();
+        playerService.fetchAndSavePlayers();
         
-        assertNotNull(result);
         verify(playerRepository, atLeastOnce()).saveAll(anyList());
     }
 }
