@@ -12,6 +12,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -62,12 +66,13 @@ class PlayerServiceTest {
     @Test
     void getPlayers_WhenDatabaseHasData_ReturnsPlayers() {
         Player player = Player.builder().name("Messi").build();
-        when(playerRepository.findAll()).thenReturn(List.of(player));
+        when(playerRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(player)));
 
-        List<Player> result = playerService.getPlayers();
+        Page<Player> result = playerService.getPlayers(null, null, null, Pageable.unpaged());
 
-        assertEquals(1, result.size());
-        assertEquals("Messi", result.get(0).getName());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("Messi", result.getContent().get(0).getName());
     }
 
     @Test
