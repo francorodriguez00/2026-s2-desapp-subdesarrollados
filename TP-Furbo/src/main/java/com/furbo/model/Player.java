@@ -21,6 +21,9 @@ public class Player {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "external_id", nullable = false, unique = true)
+    private Long externalId;
+
     private String name;
     private String position;
     private String team;

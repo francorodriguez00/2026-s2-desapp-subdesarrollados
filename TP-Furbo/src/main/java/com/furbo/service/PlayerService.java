@@ -65,29 +65,49 @@ public class PlayerService {
                 CompetitionTeamsDTO competition = fetch(API_URL + "/competitions/" + leagueCode + "/teams", CompetitionTeamsDTO.class);
                 
                 if (competition != null && competition.getTeams() != null) {
-                    List<Player> playersOfLeague = new ArrayList<>();
+                    List<PlayerSnapshot> snapshots = new ArrayList<>();
                     for (var team : competition.getTeams()) {
                         TeamDetailDTO teamDetail = fetch(API_URL + "/teams/" + team.getId(), TeamDetailDTO.class);
                         
                         if (teamDetail != null && teamDetail.getSquad() != null) {
                             for (PlayerDTO p : teamDetail.getSquad()) {
-                                playersOfLeague.add(Player.builder()
-                                        .name(p.getName())
-                                        .position(p.getPosition())
-                                        .team(teamDetail.getName())
-                                        .nationality(p.getNationality())
-                                        .league(leagueCode)
-                                        .build());
+                                if (p.getId() != null) {
+                                    snapshots.add(new PlayerSnapshot(p.getId(), p.getName(), p.getPosition(), p.getNationality(), teamDetail.getName()));
+                                }
                             }
                         }
                     }
-                    playerRepository.saveAll(playersOfLeague);
+                    upsertPlayers(leagueCode, snapshots);
                 }
             } catch (Exception e) {
                 System.err.println("Error fetching league " + leagueCode + ": " + e.getMessage());
             }
         }
     }
+
+    private void upsertPlayers(String leagueCode, List<PlayerSnapshot> incoming) {
+        java.util.Map<Long, PlayerSnapshot> byExternalId = new java.util.LinkedHashMap<>();
+        incoming.forEach(s -> byExternalId.put(s.externalId(), s));
+
+        java.util.Map<Long, Player> existing = playerRepository
+                .findByExternalIdIn(byExternalId.keySet()).stream()
+                .collect(java.util.stream.Collectors.toMap(Player::getExternalId, java.util.function.Function.identity()));
+
+        List<Player> toSave = new ArrayList<>();
+        for (PlayerSnapshot s : byExternalId.values()) {
+            Player p = existing.getOrDefault(s.externalId(), new Player());
+            p.setExternalId(s.externalId());
+            p.setName(s.name());
+            p.setPosition(s.position());
+            p.setNationality(s.nationality());
+            p.setTeam(s.team());
+            p.setLeague(leagueCode);
+            toSave.add(p);
+        }
+        playerRepository.saveAll(toSave);
+    }
+
+    private record PlayerSnapshot(Long externalId, String name, String position, String nationality, String team) {}
 
     private <T> T fetch(String url, Class<T> type) {
         for (int attempt = 0; attempt < 3; attempt++) {
