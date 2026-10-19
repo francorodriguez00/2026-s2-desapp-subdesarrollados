@@ -1,9 +1,17 @@
 package com.furbo.repository;
 
 import com.furbo.model.Portfolio;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-@Repository
+import java.util.Optional;
+
 public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
+    
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Portfolio p WHERE p.user.id = :userId AND p.playerId = :playerId")
+    Optional<Portfolio> findByUserAndPlayerId(@Param("userId") Long userId, @Param("playerId") Long playerId);
 }

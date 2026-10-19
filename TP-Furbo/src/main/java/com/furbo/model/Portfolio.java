@@ -18,4 +18,13 @@ public class Portfolio {
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Column(nullable = false)
+    private Long playerId;
+
+    @Column(nullable = false)
+    private Integer quantity = 0;
+
+    @Column(nullable = false)
+    private Integer reservedQuantity = 0;
 }

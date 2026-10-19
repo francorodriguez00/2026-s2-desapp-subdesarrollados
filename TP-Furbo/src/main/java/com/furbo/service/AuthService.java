@@ -35,10 +35,15 @@ public class AuthService {
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setPassword(passwordHasher.hash(dto.getPassword()));
+        user.setBalance(java.math.BigDecimal.valueOf(100));
+        user.setIsSuperuser(false);
         userRepository.save(user);
 
         Portfolio portfolio = new Portfolio();
         portfolio.setUser(user);
+        portfolio.setPlayerId(0L); // Valor temporal por defecto
+        portfolio.setQuantity(0);
+        portfolio.setReservedQuantity(0);
         portfolioRepository.save(portfolio);
     }
 
