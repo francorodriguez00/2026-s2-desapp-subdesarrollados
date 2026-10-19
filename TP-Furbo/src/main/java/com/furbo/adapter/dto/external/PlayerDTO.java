@@ -7,6 +7,7 @@ import lombok.Data;
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PlayerDTO {
+    private Long id;
     private String name;
     private String position;
     

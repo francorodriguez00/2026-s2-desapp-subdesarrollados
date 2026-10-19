@@ -3,13 +3,21 @@ package com.furbo.service;
 import com.furbo.adapter.dto.external.CompetitionTeamsDTO;
 import com.furbo.adapter.dto.external.PlayerDTO;
 import com.furbo.adapter.dto.external.TeamDetailDTO;
+import com.furbo.exceptions.InvalidFilterException;
 import com.furbo.model.Player;
+import com.furbo.model.enums.League;
+import com.furbo.model.enums.PlayerPosition;
 import com.furbo.repository.PlayerRepository;
+import com.furbo.repository.specs.PlayerSpecs;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class PlayerService {
@@ -17,65 +25,104 @@ public class PlayerService {
     private final PlayerRepository playerRepository;
     private final RestTemplate restTemplate;
     private static final String API_URL = "https://api.football-data.org/v4";
-    private static final String[] LEAGUES = {"PL", "PD", "SA", "BL1", "FL1"};
+    private static final Set<String> SORTABLE = Set.of("id", "name", "team", "league", "position", "nationality");
 
     public PlayerService(PlayerRepository playerRepository, RestTemplate restTemplate) {
         this.playerRepository = playerRepository;
         this.restTemplate = restTemplate;
     }
 
-    public List<Player> getPlayers() {
-        if (playerRepository.count() == 0) {
-            fetchAndSavePlayers();
+    public Page<Player> getPlayers(String league, String team, String position, Pageable pageable) {
+        String leagueCode = null;
+        if (StringUtils.hasText(league)) {
+            leagueCode = League.parse(league)
+                    .orElseThrow(() -> new InvalidFilterException("La liga solicitada no existe"))
+                    .name();
         }
-        return playerRepository.findAll();
+
+        String positionValue = null;
+        if (StringUtils.hasText(position)) {
+            positionValue = PlayerPosition.parse(position)
+                    .orElseThrow(() -> new InvalidFilterException("La posición solicitada no existe"))
+                    .apiValue();
+        }
+
+        String teamValue = StringUtils.hasText(team) ? team.trim() : null;
+
+        pageable.getSort().forEach(order -> {
+            if (!SORTABLE.contains(order.getProperty()))
+                throw new InvalidFilterException("Campo de orden no válido: " + order.getProperty());
+        });
+
+        return playerRepository.findAll(
+                PlayerSpecs.withFilters(leagueCode, teamValue, positionValue), pageable);
     }
 
-    // Cambiado de privado a público para facilitar el testeo si es necesario, 
-    // o ajustado para asegurar que saveAll se llama.
-    protected void fetchAndSavePlayers() {
-        List<Player> allPlayers = new ArrayList<>();
-        
-        for (String leagueCode : LEAGUES) {
+    public void fetchAndSavePlayers() {
+        for (League league : League.values()) {
+            String leagueCode = league.name();
             try {
-                CompetitionTeamsDTO competition = restTemplate.getForObject(
-                        API_URL + "/competitions/" + leagueCode + "/teams", CompetitionTeamsDTO.class);
+                CompetitionTeamsDTO competition = fetch(API_URL + "/competitions/" + leagueCode + "/teams", CompetitionTeamsDTO.class);
                 
                 if (competition != null && competition.getTeams() != null) {
-                    // Procesar equipos (lotes limitados para no exceder rate limits)
-                    for (int i = 0; i < competition.getTeams().size(); i++) {
-                        // Sleep breve cada 5 equipos
-                        if (i > 0 && i % 5 == 0) {
-                            try {
-                                Thread.sleep(6000);
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                throw new RuntimeException("Thread interrupted during API fetch", e);
-                            }
-                        }
-                        
-                        var team = competition.getTeams().get(i);
-                        TeamDetailDTO teamDetail = restTemplate.getForObject(
-                                API_URL + "/teams/" + team.getId(), TeamDetailDTO.class);
+                    List<PlayerSnapshot> snapshots = new ArrayList<>();
+                    for (var team : competition.getTeams()) {
+                        TeamDetailDTO teamDetail = fetch(API_URL + "/teams/" + team.getId(), TeamDetailDTO.class);
                         
                         if (teamDetail != null && teamDetail.getSquad() != null) {
                             for (PlayerDTO p : teamDetail.getSquad()) {
-                                allPlayers.add(Player.builder()
-                                        .name(p.getName())
-                                        .position(p.getPosition())
-                                        .team(teamDetail.getName())
-                                        .nationality(p.getNationality())
-                                        .league(leagueCode)
-                                        .build());
+                                if (p.getId() != null) {
+                                    snapshots.add(new PlayerSnapshot(p.getId(), p.getName(), p.getPosition(), p.getNationality(), teamDetail.getName()));
+                                }
                             }
                         }
                     }
+                    upsertPlayers(leagueCode, snapshots);
                 }
             } catch (Exception e) {
-                // Loguear error pero continuar con otras ligas
                 System.err.println("Error fetching league " + leagueCode + ": " + e.getMessage());
             }
         }
-        playerRepository.saveAll(allPlayers);
+    }
+
+    private void upsertPlayers(String leagueCode, List<PlayerSnapshot> incoming) {
+        java.util.Map<Long, PlayerSnapshot> byExternalId = new java.util.LinkedHashMap<>();
+        incoming.forEach(s -> byExternalId.put(s.externalId(), s));
+
+        java.util.Map<Long, Player> existing = playerRepository
+                .findByExternalIdIn(byExternalId.keySet()).stream()
+                .collect(java.util.stream.Collectors.toMap(Player::getExternalId, java.util.function.Function.identity()));
+
+        List<Player> toSave = new ArrayList<>();
+        for (PlayerSnapshot s : byExternalId.values()) {
+            Player p = existing.getOrDefault(s.externalId(), new Player());
+            p.setExternalId(s.externalId());
+            p.setName(s.name());
+            p.setPosition(s.position());
+            p.setNationality(s.nationality());
+            p.setTeam(s.team());
+            p.setLeague(leagueCode);
+            toSave.add(p);
+        }
+        playerRepository.saveAll(toSave);
+    }
+
+    private record PlayerSnapshot(Long externalId, String name, String position, String nationality, String team) {}
+
+    private <T> T fetch(String url, Class<T> type) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            sleepQuietly(6500); 
+            try {
+                return restTemplate.getForObject(url, type);
+            } catch (org.springframework.web.client.HttpClientErrorException.TooManyRequests e) {
+                sleepQuietly(45_000); 
+            }
+        }
+        throw new IllegalStateException("Rate limit persistente en " + url);
+    }
+
+    private void sleepQuietly(long ms) {
+        try { Thread.sleep(ms); }
+        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException(e); }
     }
 }
