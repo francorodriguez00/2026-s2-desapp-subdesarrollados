@@ -7,7 +7,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "players")
+@Table(name = "players", indexes = {
+    @Index(columnList = "league"),
+    @Index(columnList = "team"),
+    @Index(columnList = "position")
+})
 @Data
 @Builder
 @NoArgsConstructor
@@ -16,6 +20,9 @@ public class Player {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "external_id", nullable = false, unique = true)
+    private Long externalId;
 
     private String name;
     private String position;
