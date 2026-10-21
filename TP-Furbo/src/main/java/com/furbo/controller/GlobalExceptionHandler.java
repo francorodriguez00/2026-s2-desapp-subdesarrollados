@@ -22,4 +22,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handle(InvalidFilterException e) {
         return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
     }
+    
+    @ExceptionHandler(com.furbo.exceptions.InvalidCredentialsException.class)
+    public ResponseEntity<String> handle(com.furbo.exceptions.InvalidCredentialsException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+    }
 }
