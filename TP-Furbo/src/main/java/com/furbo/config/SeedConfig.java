@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ public class SeedConfig {
 
     @Bean
     @Transactional
+    @Order(1)
     CommandLineRunner initDatabase() {
         return args -> {
             if (userRepository.findByEmail("admin@furbo.com").isEmpty()) {
