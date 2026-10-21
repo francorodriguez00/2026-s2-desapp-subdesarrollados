@@ -41,9 +41,6 @@ public class AuthService {
 
         Portfolio portfolio = new Portfolio();
         portfolio.setUser(user);
-        portfolio.setPlayerId(0L); // Valor temporal por defecto
-        portfolio.setQuantity(0);
-        portfolio.setReservedQuantity(0);
         portfolioRepository.save(portfolio);
     }
 

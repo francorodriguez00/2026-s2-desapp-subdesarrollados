@@ -20,10 +20,13 @@ public class UserController {
     @Autowired private UserRepository userRepository;
 
     @GetMapping("/portfolio")
-    public List<Portfolio> getPortfolio(Principal principal) {
-        Long userId = userRepository.findByEmail(principal.getName()).orElseThrow().getId();
-        // Nota: Adaptar a query real por usuario en Repositorio
-        return portfolioRepository.findAll().stream().filter(p -> p.getUser().getId().equals(userId)).toList();
+    public Portfolio getPortfolio(Principal principal) {
+        com.furbo.model.User user = userRepository.findByEmail(principal.getName()).orElseThrow();
+        return portfolioRepository.findByUser(user).orElseGet(() -> {
+            Portfolio p = new Portfolio();
+            p.setUser(user);
+            return portfolioRepository.save(p);
+        });
     }
 
     @GetMapping("/transactions")
