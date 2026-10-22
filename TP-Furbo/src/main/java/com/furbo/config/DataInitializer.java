@@ -1,23 +1,27 @@
 package com.furbo.config;
 
 import com.furbo.service.PlayerService;
+import com.furbo.service.SuperuserTokenService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(2)
 public class DataInitializer implements ApplicationRunner {
 
     private final PlayerService playerService;
+    private final SuperuserTokenService tokenService;
 
-    public DataInitializer(PlayerService playerService) {
+    public DataInitializer(PlayerService playerService, SuperuserTokenService tokenService) {
         this.playerService = playerService;
+        this.tokenService = tokenService;
     }
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        // La carga inicial se disparará aquí. 
-        // Posteriormente integraremos el nuevo fetch robusto.
         playerService.fetchAndSavePlayers();
+        tokenService.sincronizarTodos();
     }
 }

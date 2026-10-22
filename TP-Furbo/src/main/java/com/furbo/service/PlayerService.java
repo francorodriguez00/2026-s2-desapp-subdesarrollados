@@ -24,13 +24,40 @@ public class PlayerService {
 
     private final PlayerRepository playerRepository;
     private final RestTemplate restTemplate;
+    private final com.furbo.service.SuperuserTokenService tokenService;
     private static final String API_URL = "https://api.football-data.org/v4";
-    private static final Set<String> SORTABLE = Set.of("id", "name", "team", "league", "position", "nationality");
+    private static final java.util.Set<String> SORTABLE = java.util.Set.of("id", "name", "team", "league", "position", "nationality");
 
-    public PlayerService(PlayerRepository playerRepository, RestTemplate restTemplate) {
+    public PlayerService(PlayerRepository playerRepository, RestTemplate restTemplate, com.furbo.service.SuperuserTokenService tokenService) {
         this.playerRepository = playerRepository;
         this.restTemplate = restTemplate;
+        this.tokenService = tokenService;
     }
+
+    private void upsertPlayers(String leagueCode, List<PlayerSnapshot> incoming) {
+        java.util.Map<Long, PlayerSnapshot> byExternalId = new java.util.LinkedHashMap<>();
+        incoming.forEach(s -> byExternalId.put(s.externalId(), s));
+
+        java.util.Map<Long, Player> existing = playerRepository
+                .findByExternalIdIn(byExternalId.keySet()).stream()
+                .collect(java.util.stream.Collectors.toMap(Player::getExternalId, java.util.function.Function.identity()));
+
+        List<Player> toSave = new ArrayList<>();
+        for (PlayerSnapshot s : byExternalId.values()) {
+            Player p = existing.getOrDefault(s.externalId(), new Player());
+            p.setExternalId(s.externalId());
+            p.setName(s.name());
+            p.setPosition(s.position());
+            p.setNationality(s.nationality());
+            p.setTeam(s.team());
+            p.setLeague(leagueCode);
+            toSave.add(p);
+        }
+        playerRepository.saveAll(toSave);
+        toSave.forEach(tokenService::asignarTokens);
+    }
+
+    private record PlayerSnapshot(Long externalId, String name, String position, String nationality, String team) {}
 
     public Page<Player> getPlayers(String league, String team, String position, Pageable pageable) {
         String leagueCode = null;
@@ -84,30 +111,6 @@ public class PlayerService {
             }
         }
     }
-
-    private void upsertPlayers(String leagueCode, List<PlayerSnapshot> incoming) {
-        java.util.Map<Long, PlayerSnapshot> byExternalId = new java.util.LinkedHashMap<>();
-        incoming.forEach(s -> byExternalId.put(s.externalId(), s));
-
-        java.util.Map<Long, Player> existing = playerRepository
-                .findByExternalIdIn(byExternalId.keySet()).stream()
-                .collect(java.util.stream.Collectors.toMap(Player::getExternalId, java.util.function.Function.identity()));
-
-        List<Player> toSave = new ArrayList<>();
-        for (PlayerSnapshot s : byExternalId.values()) {
-            Player p = existing.getOrDefault(s.externalId(), new Player());
-            p.setExternalId(s.externalId());
-            p.setName(s.name());
-            p.setPosition(s.position());
-            p.setNationality(s.nationality());
-            p.setTeam(s.team());
-            p.setLeague(leagueCode);
-            toSave.add(p);
-        }
-        playerRepository.saveAll(toSave);
-    }
-
-    private record PlayerSnapshot(Long externalId, String name, String position, String nationality, String team) {}
 
     private <T> T fetch(String url, Class<T> type) {
         for (int attempt = 0; attempt < 3; attempt++) {
