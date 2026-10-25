@@ -104,11 +104,21 @@ class PlayerServiceTest {
     }
 
     @Test
-    void upsertPlayers_UpdatesExistingPlayer() {
-        Player existingPlayer = Player.builder().externalId(1L).name("Old Name").build();
-        when(playerRepository.findByExternalIdIn(any())).thenReturn(List.of(existingPlayer));
+    void getPlayers_WithInvalidLeague_ThrowsException() {
+        assertThrows(com.furbo.exceptions.InvalidFilterException.class, () -> 
+            playerService.getPlayers("INVALID_LEAGUE", null, null, Pageable.unpaged()));
+    }
 
-        // Dado que upsertPlayers es privado, validaremos el comportamiento indirectamente
-        // o mediante un test de integración. Para unitario, verificamos el flujo.
+    @Test
+    void getPlayers_WithInvalidPosition_ThrowsException() {
+        assertThrows(com.furbo.exceptions.InvalidFilterException.class, () -> 
+            playerService.getPlayers(null, null, "INVALID_POSITION", Pageable.unpaged()));
+    }
+
+    @Test
+    void getPlayers_WithInvalidSortField_ThrowsException() {
+        Pageable invalidPageable = org.springframework.data.domain.PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("invalid_field"));
+        assertThrows(com.furbo.exceptions.InvalidFilterException.class, () -> 
+            playerService.getPlayers(null, null, null, invalidPageable));
     }
 }
