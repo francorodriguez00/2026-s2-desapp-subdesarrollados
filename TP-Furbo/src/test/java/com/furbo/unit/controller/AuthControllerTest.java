@@ -1,4 +1,4 @@
-package com.furbo.unit;
+package com.furbo.unit.controller;
 
 import com.furbo.adapter.dto.LoginRequestDTO;
 import com.furbo.controller.AuthController;
