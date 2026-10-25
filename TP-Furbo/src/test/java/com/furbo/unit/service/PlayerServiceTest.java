@@ -1,4 +1,4 @@
-package com.furbo.unit;
+package com.furbo.unit.service;
 
 import com.furbo.adapter.dto.external.CompetitionTeamsDTO;
 import com.furbo.adapter.dto.external.PlayerDTO;

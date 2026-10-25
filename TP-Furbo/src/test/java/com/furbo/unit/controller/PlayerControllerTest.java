@@ -1,4 +1,4 @@
-package com.furbo.unit;
+package com.furbo.unit.controller;
 
 import com.furbo.controller.PlayerController;
 import com.furbo.service.PlayerService;
