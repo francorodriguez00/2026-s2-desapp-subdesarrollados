@@ -11,9 +11,12 @@ import com.furbo.repository.PlayerRepository;
 import com.furbo.repository.specs.PlayerSpecs;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,16 +25,25 @@ import java.util.Set;
 @Service
 public class PlayerService {
 
+    private static final Logger log = LoggerFactory.getLogger(PlayerService.class);
     private final PlayerRepository playerRepository;
     private final RestTemplate restTemplate;
     private final com.furbo.service.SuperuserTokenService tokenService;
+    private final long requestDelayMs;
+    private final long rateLimitBackoffMs;
     private static final String API_URL = "https://api.football-data.org/v4";
     private static final java.util.Set<String> SORTABLE = java.util.Set.of("id", "name", "team", "league", "position", "nationality");
 
-    public PlayerService(PlayerRepository playerRepository, RestTemplate restTemplate, com.furbo.service.SuperuserTokenService tokenService) {
+    public PlayerService(PlayerRepository playerRepository, 
+                         RestTemplate restTemplate, 
+                         com.furbo.service.SuperuserTokenService tokenService,
+                         @Value("${football-api.request-delay-ms:6500}") long requestDelayMs,
+                         @Value("${football-api.rate-limit-backoff-ms:45000}") long rateLimitBackoffMs) {
         this.playerRepository = playerRepository;
         this.restTemplate = restTemplate;
         this.tokenService = tokenService;
+        this.requestDelayMs = requestDelayMs;
+        this.rateLimitBackoffMs = rateLimitBackoffMs;
     }
 
     private void upsertPlayers(String leagueCode, List<PlayerSnapshot> incoming) {
@@ -107,24 +119,25 @@ public class PlayerService {
                     upsertPlayers(leagueCode, snapshots);
                 }
             } catch (Exception e) {
-                System.err.println("Error fetching league " + leagueCode + ": " + e.getMessage());
+                log.error("Error fetching league " + leagueCode, e);
             }
         }
     }
 
     private <T> T fetch(String url, Class<T> type) {
         for (int attempt = 0; attempt < 3; attempt++) {
-            sleepQuietly(6500); 
+            sleepQuietly(requestDelayMs); 
             try {
                 return restTemplate.getForObject(url, type);
             } catch (org.springframework.web.client.HttpClientErrorException.TooManyRequests e) {
-                sleepQuietly(45_000); 
+                sleepQuietly(rateLimitBackoffMs); 
             }
         }
         throw new IllegalStateException("Rate limit persistente en " + url);
     }
 
     private void sleepQuietly(long ms) {
+        if (ms <= 0) return;
         try { Thread.sleep(ms); }
         catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException(e); }
     }
