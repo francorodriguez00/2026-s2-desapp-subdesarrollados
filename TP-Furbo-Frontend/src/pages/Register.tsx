@@ -21,6 +21,9 @@ export default function Register() {
       <input type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} required />
       <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} required />
       <button type="submit">Registrarse</button>
+      <p style={{ marginTop: '16px', textAlign: 'center' }}>
+        ¿Ya tenés cuenta? <a href="/login">Iniciá sesión</a>
+      </p>
     </form>
   );
 }
