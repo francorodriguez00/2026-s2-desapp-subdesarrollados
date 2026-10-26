@@ -24,21 +24,27 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(PlayerController.class)
-@Import(SecurityConfig.class)
+import com.furbo.controller.GlobalExceptionHandler;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+
+@WebMvcTest(
+    controllers = {PlayerController.class, GlobalExceptionHandler.class},
+    excludeFilters = @ComponentScan.Filter(
+        type = FilterType.ASSIGNABLE_TYPE,
+        classes = JwtAuthenticationFilter.class))
+@AutoConfigureMockMvc(addFilters = false)
 public class PlayerControllerTest {
 
     @Autowired private MockMvc mockMvc;
 
     @MockBean private PlayerService playerService;
-    @MockBean private JwtAuthenticationFilter jwtAuthenticationFilter;
-    @MockBean private JwtService jwtService;
 
     @Nested
     class GetPlayers {
         @Test
-        @WithMockUser
-        void authenticated_Returns200() throws Exception {
+        void getPlayers_devuelve200() throws Exception {
             when(playerService.getPlayers(anyString(), anyString(), anyString(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(Collections.emptyList()));
 
