@@ -21,8 +21,8 @@ public class SuperuserTokenServiceTest {
     @Mock private PortfolioRepository portfolioRepository;
     @Mock private PosicionPorJugadorRepository posicionRepository;
     @Mock private PlayerRepository playerRepository;
+    @Mock private SellOfferRepository sellOfferRepository; // <-- Agregado
 
-    @InjectMocks
     private SuperuserTokenService superuserTokenService;
 
     private User superuser;
@@ -32,6 +32,7 @@ public class SuperuserTokenServiceTest {
         MockitoAnnotations.openMocks(this);
         superuser = new User();
         superuser.setId(1L);
+        superuserTokenService = new SuperuserTokenService(userRepository, portfolioRepository, posicionRepository, playerRepository, sellOfferRepository);
     }
 
     @Test
@@ -61,6 +62,7 @@ public class SuperuserTokenServiceTest {
     void asignarTokens_NewPlayer_Assigns100() {
         Portfolio portfolio = new Portfolio();
         portfolio.setId(1L);
+        portfolio.setUser(superuser); // <-- Fix: asegurar que el portfolio tenga usuario
         when(userRepository.findByIsSuperuserTrue()).thenReturn(Optional.of(superuser));
         when(portfolioRepository.findByUser(superuser)).thenReturn(Optional.of(portfolio));
         
@@ -71,5 +73,6 @@ public class SuperuserTokenServiceTest {
         superuserTokenService.asignarTokens(player);
 
         verify(posicionRepository).save(any(PosicionPorJugador.class));
+        verify(sellOfferRepository).save(any(SellOffer.class));
     }
 }

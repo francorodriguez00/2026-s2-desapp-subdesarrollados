@@ -3,37 +3,36 @@ package com.furbo.config;
 import com.furbo.model.User;
 import com.furbo.repository.UserRepository;
 import com.furbo.security.PasswordHasher;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
-@Configuration
-public class SeedConfig {
+@Component
+@Order(1)
+public class SeedConfig implements ApplicationRunner {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final PasswordHasher passwordHasher;
 
-    @Autowired
-    private PasswordHasher passwordHasher;
+    public SeedConfig(UserRepository userRepository, PasswordHasher passwordHasher) {
+        this.userRepository = userRepository;
+        this.passwordHasher = passwordHasher;
+    }
 
-    @Bean
+    @Override
     @Transactional
-    @Order(1)
-    CommandLineRunner initDatabase() {
-        return args -> {
-            if (userRepository.findByEmail("admin@furbo.com").isEmpty()) {
-                User admin = new User();
-                admin.setEmail("admin@furbo.com");
-                admin.setPassword(passwordHasher.hash("admin123"));
-                admin.setBalance(BigDecimal.valueOf(100));
-                admin.setIsSuperuser(true);
-                userRepository.save(admin);
-            }
-        };
+    public void run(ApplicationArguments args) {
+        if (userRepository.findByEmail("admin@furbo.com").isEmpty()) {
+            User admin = new User();
+            admin.setEmail("admin@furbo.com");
+            admin.setPassword(passwordHasher.hash("admin123"));
+            admin.setBalance(BigDecimal.valueOf(1000));
+            admin.setIsSuperuser(true);
+            userRepository.save(admin);
+        }
     }
 }

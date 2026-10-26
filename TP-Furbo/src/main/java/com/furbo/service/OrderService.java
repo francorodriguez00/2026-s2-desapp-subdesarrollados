@@ -16,6 +16,7 @@ public class OrderService {
     @Autowired private PosicionPorJugadorRepository posicionRepository;
     @Autowired private PortfolioRepository portfolioRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private TransactionRepository transactionRepository;
     @Autowired private PriceProvider priceProvider;
     @Autowired private MarketDomainService domainService;
 
@@ -44,6 +45,9 @@ public class OrderService {
 
     @Transactional
     public void buy(Long buyerId, Long playerId, int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser mayor a 0");
+        }
         BigDecimal price = priceProvider.getCurrentPrice(playerId);
         User buyer = userRepository.findById(buyerId).orElseThrow();
         Portfolio buyerPortfolio = portfolioRepository.findByUser(buyer)
@@ -97,5 +101,14 @@ public class OrderService {
 
         buyer.setBalance(buyer.getBalance().subtract(price.multiply(BigDecimal.valueOf(quantity))));
         userRepository.save(buyer);
+
+        Transaction transaction = new Transaction();
+        transaction.setBuyerId(buyerId);
+        transaction.setPlayerId(playerId);
+        transaction.setQuantity(quantity);
+        transaction.setUnitPrice(price);
+        transaction.setCreatedAt(java.time.LocalDateTime.now());
+        // sellerId es opcional en Transaction, si es multi-vendedor no está claro cuál poner.
+        transactionRepository.save(transaction);
     }
 }
