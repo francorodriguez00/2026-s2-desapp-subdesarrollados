@@ -83,4 +83,42 @@ public class OrderServiceTest {
         verify(userRepository).save(buyer);
         assertEquals(new BigDecimal("50.00"), buyer.getBalance());
     }
+
+    @Test
+    void sell_Successful_CreatesOffer() {
+        User seller = new User();
+        seller.setId(2L);
+        Portfolio portfolio = new Portfolio();
+        portfolio.setId(2L);
+        PosicionPorJugador pos = new PosicionPorJugador();
+        pos.setCantidad(10);
+        pos.setReservedQuantity(0);
+
+        when(userRepository.findById(2L)).thenReturn(Optional.of(seller));
+        when(portfolioRepository.findByUser(seller)).thenReturn(Optional.of(portfolio));
+        when(posicionRepository.findByPortfolioIdAndPlayerId(2L, 100L)).thenReturn(Optional.of(pos));
+        
+        orderService.sell(2L, 100L, 5);
+
+        verify(sellOfferRepository).save(any(SellOffer.class));
+        assertEquals(5, pos.getReservedQuantity());
+    }
+
+    @Test
+    void buy_UsesPriceProvider_UpdatesBalance() {
+        User buyer = new User();
+        buyer.setId(1L);
+        buyer.setBalance(new BigDecimal("100.00"));
+        Portfolio buyerPortfolio = new Portfolio();
+        buyerPortfolio.setId(1L);
+        
+        when(userRepository.findById(1L)).thenReturn(Optional.of(buyer));
+        when(portfolioRepository.findByUser(buyer)).thenReturn(Optional.of(buyerPortfolio));
+        when(priceProvider.getCurrentPrice(100L)).thenReturn(new BigDecimal("25.00"));
+        when(domainService.canUserAfford(any(), eq(2), any())).thenReturn(true);
+        when(sellOfferRepository.findOpenOffersForPlayer(100L)).thenReturn(List.of()); // No stocks, force exception
+
+        assertThrows(IllegalStateException.class, () -> orderService.buy(1L, 100L, 2));
+        verify(priceProvider).getCurrentPrice(100L);
+    }
 }
