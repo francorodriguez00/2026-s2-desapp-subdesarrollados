@@ -1,7 +1,11 @@
 package com.furbo.unit.controller;
 
+import com.furbo.config.SecurityConfig;
 import com.furbo.controller.PlayerController;
+import com.furbo.security.JwtAuthenticationFilter;
+import com.furbo.security.JwtService;
 import com.furbo.service.PlayerService;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -21,25 +25,25 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(PlayerController.class)
-@Import(com.furbo.config.SecurityConfig.class)
+@Import(SecurityConfig.class)
 public class PlayerControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
 
-    @MockBean
-    private PlayerService playerService;
+    @MockBean private PlayerService playerService;
+    @MockBean private JwtAuthenticationFilter jwtAuthenticationFilter;
+    @MockBean private JwtService jwtService;
 
-    @MockBean
-    private com.furbo.security.JwtAuthenticationFilter jwtAuthenticationFilter;
+    @Nested
+    class GetPlayers {
+        @Test
+        @WithMockUser
+        void authenticated_Returns200() throws Exception {
+            when(playerService.getPlayers(anyString(), anyString(), anyString(), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(Collections.emptyList()));
 
-    @Test
-    @WithMockUser
-    void getPlayers_Authenticated_ReturnsPlayers() throws Exception {
-        when(playerService.getPlayers(anyString(), anyString(), anyString(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(Collections.emptyList()));
-
-        mockMvc.perform(get("/players"))
-                .andExpect(status().isOk());
+            mockMvc.perform(get("/players"))
+                    .andExpect(status().isOk());
+        }
     }
 }
