@@ -44,16 +44,16 @@ public class SuperuserTokenService {
     @Transactional
     public void asignarTokens(Player jugador) {
         Portfolio portfolio = asegurarPortfolioSuperuser();
-        if (posicionRepository.findByPortfolioIdAndPlayerId(portfolio.getId(), jugador.getExternalId()).isEmpty()) {
+        if (posicionRepository.findByPortfolioIdAndPlayerId(portfolio.getId(), jugador.getId()).isEmpty()) {
             PosicionPorJugador posicion = new PosicionPorJugador();
             posicion.setPortfolio(portfolio);
-            posicion.setPlayerId(jugador.getExternalId());
+            posicion.setPlayerId(jugador.getId());
             posicion.setCantidad(100);
             posicionRepository.save(posicion);
 
             SellOffer offer = new SellOffer();
             offer.setSellerId(portfolio.getUser().getId());
-            offer.setPlayerId(jugador.getExternalId());
+            offer.setPlayerId(jugador.getId());
             offer.setQuantityTotal(100);
             offer.setQuantityRemaining(100);
             offer.setStatus(SellOffer.OfferStatus.OPEN);
@@ -72,11 +72,11 @@ public class SuperuserTokenService {
                 .collect(Collectors.toSet());
 
         List<PosicionPorJugador> nuevas = todosLosJugadores.stream()
-                .filter(j -> !jugadorIdsConPosicion.contains(j.getExternalId()))
+                .filter(j -> !jugadorIdsConPosicion.contains(j.getId()))
                 .map(j -> {
                     PosicionPorJugador p = new PosicionPorJugador();
                     p.setPortfolio(portfolio);
-                    p.setPlayerId(j.getExternalId());
+                    p.setPlayerId(j.getId());
                     p.setCantidad(100);
                     return p;
                 })

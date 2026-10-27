@@ -86,7 +86,7 @@ class MarketFlowIntegrationTest extends BaseIntegrationTest {
         comprar(token, p, 5);
 
         var res = rest.exchange("/orders/sell", HttpMethod.POST,
-                new HttpEntity<>(new OrderController.SellRequest(p.getExternalId(), 2), bearer(token)), Void.class);
+                new HttpEntity<>(new OrderController.SellRequest(p.getId(), 2), bearer(token)), Void.class);
 
         assertThat(res.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(reservadosDe(email, p)).isEqualTo(2);
@@ -94,7 +94,7 @@ class MarketFlowIntegrationTest extends BaseIntegrationTest {
 
     private ResponseEntity<Void> comprar(String token, Player p, int qty) {
         return rest.exchange("/orders/buy", HttpMethod.POST,
-                new HttpEntity<>(new OrderController.BuyRequest(p.getExternalId(), qty), bearer(token)), Void.class);
+                new HttpEntity<>(new OrderController.BuyRequest(p.getId(), qty), bearer(token)), Void.class);
     }
 
     private Player crearJugador() {
@@ -117,7 +117,7 @@ class MarketFlowIntegrationTest extends BaseIntegrationTest {
     private Optional<PosicionPorJugador> posicion(String email, Player p) {
         User u = userRepository.findByEmail(email).orElseThrow();
         Portfolio pf = portfolioRepository.findByUser(u).orElseThrow();
-        return posicionRepository.findByPortfolioIdAndPlayerId(pf.getId(), p.getExternalId());
+        return posicionRepository.findByPortfolioIdAndPlayerId(pf.getId(), p.getId());
     }
 
     private int cantidadDe(String email, Player p) {
