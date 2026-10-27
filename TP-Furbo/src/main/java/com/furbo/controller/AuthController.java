@@ -3,6 +3,7 @@ package com.furbo.controller;
 import com.furbo.adapter.dto.LoginRequestDTO;
 import com.furbo.adapter.dto.LoginResponseDTO;
 import com.furbo.adapter.dto.RegisterRequestDTO;
+import com.furbo.exceptions.InvalidCredentialsException;
 import com.furbo.service.AuthService;
 import com.furbo.service.UserService;
 import jakarta.validation.Valid;
@@ -34,8 +35,8 @@ public class AuthController {
         try {
             String token = authService.login(loginRequest);
             return ResponseEntity.ok(new LoginResponseDTO(token));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
+        } catch (InvalidCredentialsException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
     }
 }
