@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
 
+import com.furbo.adapter.dto.PortfolioResponseDTO;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -20,13 +23,19 @@ public class UserController {
     @Autowired private UserRepository userRepository;
 
     @GetMapping("/portfolio")
-    public Portfolio getPortfolio(Principal principal) {
+    public PortfolioResponseDTO getPortfolio(Principal principal) {
         com.furbo.model.User user = userRepository.findByEmail(principal.getName()).orElseThrow();
-        return portfolioRepository.findByUser(user).orElseGet(() -> {
+        Portfolio portfolio = portfolioRepository.findByUser(user).orElseGet(() -> {
             Portfolio p = new Portfolio();
             p.setUser(user);
             return portfolioRepository.save(p);
         });
+
+        List<PortfolioResponseDTO.PositionDTO> posDTOs = portfolio.getPosiciones().stream()
+                .map(p -> new PortfolioResponseDTO.PositionDTO(p.getPlayerId(), p.getCantidad()))
+                .collect(Collectors.toList());
+
+        return new PortfolioResponseDTO(posDTOs);
     }
 
     @GetMapping("/transactions")
