@@ -19,6 +19,8 @@ sonar {
 group = 'com.furbo'
 version = '0.0.1-SNAPSHOT'
 
+ext['testcontainers.version'] = '1.21.4'
+
 repositories {
     mavenCentral()
 }
