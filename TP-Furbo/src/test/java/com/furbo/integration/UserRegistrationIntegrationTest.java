@@ -11,9 +11,8 @@ import org.springframework.test.context.TestPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "classpath:application-test.properties")
-public class UserRegistrationIntegrationTest {
+public class UserRegistrationIntegrationTest extends BaseIntegrationTest{
 
     @Autowired
     private TestRestTemplate restTemplate;

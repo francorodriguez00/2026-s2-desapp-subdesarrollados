@@ -1,9 +1,8 @@
-package com.furbo.unit;
+package com.furbo.unit.service;
 
 import com.furbo.adapter.dto.LoginRequestDTO;
 import com.furbo.adapter.dto.RegisterRequestDTO;
 import com.furbo.exceptions.InvalidCredentialsException;
-import com.furbo.model.Portfolio;
 import com.furbo.model.User;
 import com.furbo.repository.PortfolioRepository;
 import com.furbo.repository.UserRepository;

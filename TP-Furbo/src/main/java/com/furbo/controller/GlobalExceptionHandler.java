@@ -22,4 +22,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handle(InvalidFilterException e) {
         return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
     }
+    
+    @ExceptionHandler(java.util.NoSuchElementException.class)
+    public ResponseEntity<String> handle(java.util.NoSuchElementException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+    }
 }
