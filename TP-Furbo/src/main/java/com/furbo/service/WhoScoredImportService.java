@@ -139,12 +139,12 @@ public class WhoScoredImportService {
 
     private Integer getInteger(Map<String, Object> data, String key) {
         Object val = data.get(key);
-        return val instanceof Number ? ((Number) val).intValue() : null;
+        return val instanceof Number ? ((Number) val).intValue() : 0;
     }
 
     private Double getDouble(Map<String, Object> data, String key) {
         Object val = data.get(key);
-        return val instanceof Number ? ((Number) val).doubleValue() : null;
+        return val instanceof Number ? ((Number) val).doubleValue() : 0.0;
     }
 
     private Boolean getBoolean(Map<String, Object> data, String key) {
