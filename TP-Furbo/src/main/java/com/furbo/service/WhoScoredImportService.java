@@ -110,7 +110,7 @@ public class WhoScoredImportService {
             .redCards(getInteger(data, "redCard"))
             .shotsPerGame(getDouble(data, "shotsPerGame"))
             .aerialWonPerGame(getDouble(data, "aerialWonPerGame"))
-            .manOfTheMatch(getBoolean(data, "manOfTheMatch"))
+            .manOfTheMatch(getInteger(data, "manOfTheMatch"))
             .keyPassPerGame(getDouble(data, "keyPassPerGame"))
             .dribbleWonPerGame(getDouble(data, "dribbleWonPerGame"))
             .foulGivenPerGame(getDouble(data, "foulGivenPerGame"))
@@ -132,6 +132,7 @@ public class WhoScoredImportService {
             .build();
     }
 
+    // Eliminé getBoolean porque ya no se usa, usar getInteger para manOfTheMatch
     private Long getLong(Map<String, Object> data, String key) {
         Object val = data.get(key);
         return val instanceof Number ? ((Number) val).longValue() : null;
@@ -145,10 +146,5 @@ public class WhoScoredImportService {
     private Double getDouble(Map<String, Object> data, String key) {
         Object val = data.get(key);
         return val instanceof Number ? ((Number) val).doubleValue() : 0.0;
-    }
-
-    private Boolean getBoolean(Map<String, Object> data, String key) {
-        Object val = data.get(key);
-        return val instanceof Boolean ? (Boolean) val : null;
     }
 }

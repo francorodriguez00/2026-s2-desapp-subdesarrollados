@@ -49,7 +49,7 @@ public class PlayerSeasonStats {
     private Double shotsPerGame;
     private Double passSuccess;
     private Double aerialWonPerGame;
-    private Boolean manOfTheMatch;
+    private Integer manOfTheMatch; // Cambiado de Boolean a Integer
 
     // Offensive
     private Double keyPassPerGame;
