@@ -5,6 +5,7 @@ import com.furbo.repository.PlayerRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
@@ -17,8 +18,8 @@ public class PlayerMatcherServiceTest {
         when(repo.findAll()).thenReturn(Arrays.asList(p));
         
         PlayerMatcherService service = new PlayerMatcherService(repo);
-        Optional<Player> result = service.findMatch("Iliman Ndiaye", "Everton");
+        List<PlayerMatcherService.MatchCandidate> result = service.findCandidates("Iliman Ndiaye", "Everton", "EPL");
         
-        assertTrue(result.isPresent());
+        assertTrue(!result.isEmpty());
     }
 }

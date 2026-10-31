@@ -44,6 +44,7 @@ public class SuperuserTokenService {
     @Transactional
     public void asignarTokens(Player jugador) {
         Portfolio portfolio = asegurarPortfolioSuperuser();
+        // Verificamos si ya existe una posición para evitar duplicados y no sobrescribir nada
         if (posicionRepository.findByPortfolioIdAndPlayerId(portfolio.getId(), jugador.getId()).isEmpty()) {
             PosicionPorJugador posicion = new PosicionPorJugador();
             posicion.setPortfolio(portfolio);
@@ -59,6 +60,7 @@ public class SuperuserTokenService {
             offer.setStatus(SellOffer.OfferStatus.OPEN);
             sellOfferRepository.save(offer);
         }
+        // Si ya existe, no hacemos nada, preservando el estado actual (cantidades vendidas, etc.)
     }
 
     @Transactional

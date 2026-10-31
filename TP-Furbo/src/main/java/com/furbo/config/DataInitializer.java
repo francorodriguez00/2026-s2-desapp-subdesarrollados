@@ -4,11 +4,13 @@ import com.furbo.service.PlayerService;
 import com.furbo.service.SuperuserTokenService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
 @Order(2)
+@Profile("!whoscored-import")
 public class DataInitializer implements ApplicationRunner {
 
     private final PlayerService playerService;
@@ -22,6 +24,6 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         playerService.fetchAndSavePlayers();
-        tokenService.sincronizarTodos();
+        // tokenService.sincronizarTodos(); // Eliminado para evitar sincronización masiva en arranque
     }
 }

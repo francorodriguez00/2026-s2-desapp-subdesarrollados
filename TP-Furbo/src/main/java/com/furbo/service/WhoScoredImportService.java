@@ -74,6 +74,10 @@ public class WhoScoredImportService {
             );
             if (existing.isPresent()) {
                 stats.setId(existing.get().getId());
+                // Preservar el playerId si el existente ya tiene uno y el nuevo no
+                if (stats.getPlayerId() == null && existing.get().getPlayerId() != null) {
+                    stats.setPlayerId(existing.get().getPlayerId());
+                }
             }
             repository.save(stats);
         }
@@ -108,10 +112,20 @@ public class WhoScoredImportService {
             .aerialWonPerGame(getDouble(data, "aerialWonPerGame"))
             .manOfTheMatch(getBoolean(data, "manOfTheMatch"))
             .keyPassPerGame(getDouble(data, "keyPassPerGame"))
+            .dribbleWonPerGame(getDouble(data, "dribbleWonPerGame"))
+            .foulGivenPerGame(getDouble(data, "foulGivenPerGame"))
+            .dispossessedPerGame(getDouble(data, "dispossessedPerGame"))
+            .turnoverPerGame(getDouble(data, "turnoverPerGame"))
             .tacklePerGame(getDouble(data, "tacklePerGame"))
             .interceptionPerGame(getDouble(data, "interceptionPerGame"))
+            .foulsPerGame(getDouble(data, "foulsPerGame"))
             .clearancePerGame(getDouble(data, "clearancePerGame"))
+            .wasDribbledPerGame(getDouble(data, "wasDribbledPerGame"))
+            .outfielderBlockPerGame(getDouble(data, "outfielderBlockPerGame"))
             .totalPassesPerGame(getDouble(data, "totalPassesPerGame"))
+            .accurateCrossesPerGame(getDouble(data, "accurateCrossesPerGame"))
+            .accurateLongPassPerGame(getDouble(data, "accurateLongPassPerGame"))
+            .accurateThroughBallPerGame(getDouble(data, "accurateThroughBallPerGame"))
             .passSuccess(getDouble(data, "passSuccess"))
             .fetchedAt(fetchedAt)
             .updatedAt(LocalDateTime.now())

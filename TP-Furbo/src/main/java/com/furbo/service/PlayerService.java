@@ -55,7 +55,9 @@ public class PlayerService {
                 .collect(java.util.stream.Collectors.toMap(Player::getExternalId, java.util.function.Function.identity()));
 
         List<Player> toSave = new ArrayList<>();
+        List<Player> newPlayers = new ArrayList<>(); // Nuevo seguimiento
         for (PlayerSnapshot s : byExternalId.values()) {
+            boolean isNew = !existing.containsKey(s.externalId());
             Player p = existing.getOrDefault(s.externalId(), new Player());
             p.setExternalId(s.externalId());
             p.setName(s.name());
@@ -64,9 +66,12 @@ public class PlayerService {
             p.setTeam(s.team());
             p.setLeague(leagueCode);
             toSave.add(p);
+            if (isNew) {
+                newPlayers.add(p);
+            }
         }
         playerRepository.saveAll(toSave);
-        toSave.forEach(tokenService::asignarTokens);
+        newPlayers.forEach(tokenService::asignarTokens); // Solo a nuevos
     }
 
     private record PlayerSnapshot(Long externalId, String name, String position, String nationality, String team) {}

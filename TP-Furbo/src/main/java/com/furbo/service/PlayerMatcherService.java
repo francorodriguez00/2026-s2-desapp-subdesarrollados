@@ -2,7 +2,6 @@ package com.furbo.service;
 
 import com.furbo.model.Player;
 import com.furbo.repository.PlayerRepository;
-import com.furbo.model.PlayerSeasonStats;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
