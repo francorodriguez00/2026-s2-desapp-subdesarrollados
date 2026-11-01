@@ -2,7 +2,10 @@ import api from './axiosConfig';
 
 export interface Position {
   playerId: number;
+  playerName: string;
   cantidad: number;
+  precioActual: number;
+  valorTotal: number;
 }
 
 export interface Portfolio {

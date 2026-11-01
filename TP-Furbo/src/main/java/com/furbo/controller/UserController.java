@@ -1,17 +1,19 @@
 package com.furbo.controller;
 
+import com.furbo.adapter.dto.PortfolioResponseDTO;
+import com.furbo.model.Player;
 import com.furbo.model.Portfolio;
 import com.furbo.model.Transaction;
 import com.furbo.repository.PortfolioRepository;
+import com.furbo.repository.PlayerRepository;
 import com.furbo.repository.TransactionRepository;
 import com.furbo.repository.UserRepository;
+import com.furbo.service.PriceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-
+import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
-
-import com.furbo.adapter.dto.PortfolioResponseDTO;
 import java.util.stream.Collectors;
 
 @RestController
@@ -21,6 +23,8 @@ public class UserController {
     @Autowired private PortfolioRepository portfolioRepository;
     @Autowired private TransactionRepository transactionRepository;
     @Autowired private UserRepository userRepository;
+    @Autowired private PlayerRepository playerRepository;
+    @Autowired private PriceProvider priceProvider;
 
     @GetMapping("/portfolio")
     public PortfolioResponseDTO getPortfolio(Principal principal) {
@@ -32,7 +36,12 @@ public class UserController {
         });
 
         List<PortfolioResponseDTO.PositionDTO> posDTOs = portfolio.getPosiciones().stream()
-                .map(p -> new PortfolioResponseDTO.PositionDTO(p.getPlayerId(), p.getCantidad()))
+                .map(p -> {
+                    Player player = playerRepository.findById(p.getPlayerId()).orElse(new Player());
+                    BigDecimal price = priceProvider.getCurrentPrice(p.getPlayerId());
+                    BigDecimal total = price.multiply(BigDecimal.valueOf(p.getCantidad()));
+                    return new PortfolioResponseDTO.PositionDTO(p.getPlayerId(), player.getName(), p.getCantidad(), price, total);
+                })
                 .collect(Collectors.toList());
 
         return new PortfolioResponseDTO(posDTOs);

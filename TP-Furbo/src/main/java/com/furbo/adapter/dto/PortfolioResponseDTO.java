@@ -16,6 +16,9 @@ public class PortfolioResponseDTO {
     @NoArgsConstructor
     public static class PositionDTO {
         private Long playerId;
+        private String playerName;
         private Integer cantidad;
+        private java.math.BigDecimal precioActual;
+        private java.math.BigDecimal valorTotal;
     }
 }
