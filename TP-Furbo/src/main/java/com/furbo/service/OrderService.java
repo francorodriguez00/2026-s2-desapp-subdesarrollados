@@ -74,7 +74,7 @@ public class OrderService {
             int canTake = Math.min(quantity - processedQuantity, offer.getQuantityRemaining());
             if (canTake <= 0) continue;
             
-            // Procesar vendedor (decremento)
+            // Procesar vendedor (decremento y pago)
             User seller = userRepository.findById(offer.getSellerId()).orElseThrow();
             Portfolio sellerPortfolio = portfolioRepository.findByUser(seller).orElseThrow();
             PosicionPorJugador sellerPos = posicionRepository.findByPortfolioIdAndPlayerId(sellerPortfolio.getId(), playerId).orElseThrow();
@@ -82,6 +82,10 @@ public class OrderService {
             sellerPos.setCantidad(sellerPos.getCantidad() - canTake);
             sellerPos.setReservedQuantity(sellerPos.getReservedQuantity() - canTake);
             posicionRepository.save(sellerPos);
+
+            BigDecimal pagoVendedor = price.multiply(BigDecimal.valueOf(canTake));
+            seller.setBalance(seller.getBalance().add(pagoVendedor));
+            userRepository.save(seller);
 
             // Procesar comprador (incremento)
             PosicionPorJugador buyerPos = posicionRepository.findByPortfolioIdAndPlayerId(buyerPortfolio.getId(), playerId)
