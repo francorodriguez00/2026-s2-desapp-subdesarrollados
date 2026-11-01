@@ -1,7 +1,11 @@
-package com.furbo.service.valuation;
+package com.furbo.service;
 
 import com.furbo.model.*;
+import com.furbo.model.enums.QuoteTrigger;
 import com.furbo.repository.*;
+import com.furbo.service.valuation.*;
+import com.furbo.model.quoteStrategy.StrategyRegistry;
+import com.furbo.model.quoteStrategy.ValuationStrategy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;

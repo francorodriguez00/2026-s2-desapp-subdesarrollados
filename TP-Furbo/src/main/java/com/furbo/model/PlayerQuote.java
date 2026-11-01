@@ -1,12 +1,11 @@
 package com.furbo.model;
 
+import com.furbo.model.enums.QuoteTrigger;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Map;
 
 @Entity
 @Table(name = "player_quote", indexes = @Index(columnList = "playerId, calculatedAt DESC, id DESC"))

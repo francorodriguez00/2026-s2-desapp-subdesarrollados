@@ -1,7 +1,8 @@
-package com.furbo.service.valuation;
+package com.furbo.config;
 
-import com.furbo.model.QuoteTrigger;
+import com.furbo.model.enums.QuoteTrigger;
 import com.furbo.repository.PlayerQuoteRepository;
+import com.furbo.service.QuotationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;

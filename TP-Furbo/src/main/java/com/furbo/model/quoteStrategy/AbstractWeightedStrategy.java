@@ -1,6 +1,8 @@
-package com.furbo.service.valuation;
+package com.furbo.model.quoteStrategy;
 
 import com.furbo.model.StrategyConfigData;
+import com.furbo.service.valuation.*;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashMap;

@@ -1,4 +1,4 @@
-package com.furbo.service.valuation;
+package com.furbo.config;
 
 import com.furbo.model.StrategyConfig;
 import com.furbo.model.StrategyConfigData;

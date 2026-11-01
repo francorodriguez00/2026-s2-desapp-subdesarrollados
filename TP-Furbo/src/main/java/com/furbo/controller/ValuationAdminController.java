@@ -2,8 +2,9 @@ package com.furbo.controller;
 
 import com.furbo.model.StrategyConfig;
 import com.furbo.model.StrategyConfigData;
-import com.furbo.service.valuation.QuotationService;
-import com.furbo.service.valuation.StrategyConfigValidator;
+import com.furbo.model.enums.QuoteTrigger;
+import com.furbo.service.QuotationService;
+import com.furbo.config.StrategyConfigValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -53,7 +54,7 @@ public class ValuationAdminController {
     @PostMapping("/recalculate")
     @Operation(summary = "Recalcula todo")
     public ResponseEntity<?> recalculate() {
-        service.recalculateAll(com.furbo.model.QuoteTrigger.MANUAL);
+        service.recalculateAll(QuoteTrigger.MANUAL);
         return ResponseEntity.ok().build();
     }
 }

@@ -1,4 +1,4 @@
-package com.furbo.service.valuation;
+package com.furbo.model.quoteStrategy;
 
 import org.springframework.stereotype.Component;
 import java.util.List;
