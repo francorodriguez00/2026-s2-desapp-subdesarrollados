@@ -10,16 +10,26 @@ export interface Position {
 
 export interface Portfolio {
   posiciones: Position[];
+  saldoDisponible: number;
+  totalInvertido: number;
 }
 
 export const getPortfolio = async () => {
-  console.log('EJECUTANDO getPortfolio'); // sacar
   try {
     const { data } = await api.get<Portfolio>('/users/portfolio');
     return data;
   } catch (error) {
     console.error("Error fetching portfolio:", error);
     throw error;
-    //return null; // Devuelve null si falla (ej: 404 o error interno)
+  }
+};
+
+export const getBalance = async () => {
+  try {
+    const { data } = await api.get<number>('/users/balance');
+    return data;
+  } catch (error) {
+    console.error("Error fetching balance:", error);
+    throw error;
   }
 };

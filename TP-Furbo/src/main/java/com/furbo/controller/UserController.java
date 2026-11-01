@@ -35,6 +35,7 @@ public class UserController {
             return portfolioRepository.save(p);
         });
 
+        BigDecimal totalInvertido = BigDecimal.ZERO;
         List<PortfolioResponseDTO.PositionDTO> posDTOs = portfolio.getPosiciones().stream()
                 .map(p -> {
                     Player player = playerRepository.findById(p.getPlayerId()).orElse(new Player());
@@ -44,7 +45,16 @@ public class UserController {
                 })
                 .collect(Collectors.toList());
 
-        return new PortfolioResponseDTO(posDTOs);
+        for (PortfolioResponseDTO.PositionDTO pos : posDTOs) {
+            totalInvertido = totalInvertido.add(pos.getValorTotal());
+        }
+
+        return new PortfolioResponseDTO(posDTOs, user.getBalance(), totalInvertido);
+    }
+
+    @GetMapping("/balance")
+    public BigDecimal getBalance(Principal principal) {
+        return userRepository.findByEmail(principal.getName()).orElseThrow().getBalance();
     }
 
     @GetMapping("/transactions")

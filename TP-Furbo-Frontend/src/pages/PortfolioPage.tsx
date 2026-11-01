@@ -33,27 +33,34 @@ export default function PortfolioPage() {
       {(!portfolio?.posiciones || portfolio.posiciones.filter(p => p.cantidad > 0).length === 0) ? (
         <p>No tienes posiciones abiertas actualmente.</p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-              <th style={{ textAlign: 'left', padding: '8px' }}>Jugador</th>
-              <th style={{ textAlign: 'left', padding: '8px' }}>Cantidad</th>
-              <th style={{ textAlign: 'left', padding: '8px' }}>Precio Unit.</th>
-              <th style={{ textAlign: 'left', padding: '8px' }}>Valor Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {portfolio.posiciones.filter(p => p.cantidad > 0).map((pos: any) => (
-              <tr key={pos.playerId} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                <td style={{ padding: '8px' }}>{pos.playerName}</td>
-                <td style={{ padding: '8px' }}>{pos.cantidad}</td>
-                <td style={{ padding: '8px' }}>{pos.precioActual} créditos</td>
-                <td style={{ padding: '8px' }}>{pos.valorTotal} créditos</td>
+        <>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Jugador</th>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Cantidad</th>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Precio Unit.</th>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Valor Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {portfolio.posiciones.filter(p => p.cantidad > 0).map((pos: any) => (
+                <tr key={pos.playerId} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                  <td style={{ padding: '8px' }}>{pos.playerName}</td>
+                  <td style={{ padding: '8px' }}>{pos.cantidad}</td>
+                  <td style={{ padding: '8px' }}>{pos.precioActual} créditos</td>
+                  <td style={{ padding: '8px' }}>{pos.valorTotal} créditos</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ textAlign: 'right', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>
+            <p><strong>Saldo Disponible:</strong> {portfolio.saldoDisponible} créditos</p>
+            <p><strong>Total Invertido:</strong> {portfolio.totalInvertido} créditos</p>
+          </div>
+        </>
       )}
     </div>
   );
+
 }

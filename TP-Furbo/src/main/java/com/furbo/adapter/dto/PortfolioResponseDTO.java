@@ -10,6 +10,8 @@ import java.util.List;
 @NoArgsConstructor
 public class PortfolioResponseDTO {
     private List<PositionDTO> posiciones;
+    private java.math.BigDecimal saldoDisponible;
+    private java.math.BigDecimal totalInvertido;
 
     @Data
     @AllArgsConstructor
