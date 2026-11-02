@@ -15,7 +15,6 @@ export default function PlayersPage() {
     try {
       setLoading(true);
       const data = await getPlayers({ name: nameSearch, league, position, page, size: 20 });
-      // El ordenamiento ya viene hecho desde el backend en la página actual
       setPlayers(data.content);
       setTotalPages(data.totalPages);
     } catch (err) {
@@ -24,6 +23,7 @@ export default function PlayersPage() {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     fetchPlayers();
