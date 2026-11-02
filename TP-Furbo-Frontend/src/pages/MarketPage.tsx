@@ -12,12 +12,26 @@ export default function MarketPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  const [nameSearch, setNameSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  const fetchPlayers = async (search: string, pg: number) => {
+    try {
+      setLoading(true);
+      const data = await getPlayers({ name: search, page: pg, size: 20 });
+      setPlayers(data.content);
+      setTotalPages(data.totalPages);
+    } catch (err) {
+      console.error("Error loading players:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    getPlayers().then(data => {
-      console.log("Players loaded:", data);
-      setPlayers(data);
-    }).catch(err => console.error("Error loading players:", err));
-  }, []);
+    fetchPlayers(nameSearch, page);
+  }, [nameSearch, page]);
 
   useEffect(() => {
     if (playerId) {
@@ -48,6 +62,12 @@ export default function MarketPage() {
       {message && <p style={{ color: message.type === 'error' ? 'var(--color-negative)' : 'var(--color-positive)' }}>{message.text}</p>}
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxWidth: '300px' }}>
+        <input 
+            placeholder="Buscar jugador..." 
+            value={nameSearch} 
+            onChange={(e) => { setNameSearch(e.target.value); setPage(0); }} 
+        />
+        
         <select 
           onChange={(e) => setPlayerId(e.target.value === '' ? '' : Number(e.target.value))} 
           value={playerId === '' ? '' : playerId}
@@ -56,6 +76,12 @@ export default function MarketPage() {
           {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         
+        <div style={{ display: 'flex', gap: '5px' }}>
+            <button disabled={page === 0} onClick={() => setPage(p => p - 1)}>Anterior</button>
+            <span>Página {page + 1} de {totalPages}</span>
+            <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Siguiente</button>
+        </div>
+
         {price !== null && <p>Precio unitario: {price} créditos</p>}
         
         <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />

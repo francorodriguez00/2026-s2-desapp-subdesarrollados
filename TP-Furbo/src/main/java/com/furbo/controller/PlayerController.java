@@ -26,7 +26,8 @@ public class PlayerController {
             @RequestParam(required = false) String league,
             @RequestParam(required = false) String team,
             @RequestParam(required = false) String position,
+            @RequestParam(required = false) String name,
             @PageableDefault(size = 50, sort = {"name", "id"}) Pageable pageable) {
-        return ResponseEntity.ok(playerService.getPlayers(league, team, position, pageable));
+        return ResponseEntity.ok(playerService.getPlayers(league, team, position, name, pageable));
     }
 }
