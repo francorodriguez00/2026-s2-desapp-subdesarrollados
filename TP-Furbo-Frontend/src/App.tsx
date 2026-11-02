@@ -6,6 +6,7 @@ import PlayersPage from './pages/PlayersPage';
 import MarketPage from './pages/MarketPage';
 import PortfolioPage from './pages/PortfolioPage';
 import TransactionsPage from './pages/TransactionsPage';
+import OperationsPage from './pages/OperationsPage';
 import { useEffect, useState } from 'react';
 import { getBalance } from './api/userService';
 
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="/players" element={<PlayersPage />} />
             <Route path="/market" element={<MarketPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/operations" element={<OperationsPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
