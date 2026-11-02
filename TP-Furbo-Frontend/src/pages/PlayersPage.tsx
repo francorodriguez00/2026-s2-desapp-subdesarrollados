@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getPlayers } from '../api/playerService';
 import type { Player } from '../types/player';
 import { Pagination } from '../components/Pagination';
+import { useNavigate } from 'react-router-dom';
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -11,6 +12,7 @@ export default function PlayersPage() {
   const [position, setPosition] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const navigate = useNavigate();
 
   const fetchPlayers = async () => {
     try {
@@ -55,6 +57,7 @@ export default function PlayersPage() {
             <th style={{ textAlign: 'left', padding: '8px' }}>Equipo</th>
             <th style={{ textAlign: 'left', padding: '8px' }}>Liga</th>
             <th style={{ textAlign: 'left', padding: '8px' }}>Cotización</th>
+            <th style={{ textAlign: 'left', padding: '8px' }}>Acción</th>
           </tr>
         </thead>
         <tbody>
@@ -65,6 +68,9 @@ export default function PlayersPage() {
               <td style={{ padding: '8px' }}>{p.team}</td>
               <td style={{ padding: '8px' }}>{p.league}</td>
               <td style={{ padding: '8px' }}>{p.price} créditos</td>
+              <td style={{ padding: '8px' }}>
+                <button onClick={() => navigate(`/market?playerId=${p.id}`)}>Operar</button>
+              </td>
             </tr>
           ))}
         </tbody>

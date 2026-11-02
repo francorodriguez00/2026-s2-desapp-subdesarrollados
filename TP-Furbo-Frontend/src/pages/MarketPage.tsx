@@ -4,10 +4,14 @@ import { buyTokens, sellTokens } from '../api/orderService';
 import { getPrice } from '../api/marketService';
 import type { Player } from '../types/player';
 import { Pagination } from '../components/Pagination';
+import { useSearchParams } from 'react-router-dom';
 
 export default function MarketPage() {
+  const [searchParams] = useSearchParams();
   const [players, setPlayers] = useState<Player[]>([]);
-  const [playerId, setPlayerId] = useState<number | ''>('');
+  const [playerId, setPlayerId] = useState<number | ''>(
+    searchParams.get('playerId') ? Number(searchParams.get('playerId')) : ''
+  );
   const [price, setPrice] = useState<number | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [loading, setLoading] = useState(false);
