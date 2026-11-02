@@ -3,5 +3,8 @@ export interface Player {
   name: string;
   position: string;
   team: string;
+  nationality: string;
   league: string;
+  price: number;
 }
+
