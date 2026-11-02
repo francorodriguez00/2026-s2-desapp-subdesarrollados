@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getPlayers } from '../api/playerService';
 import type { Player } from '../types/player';
+import { Pagination } from '../components/Pagination';
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -23,7 +24,6 @@ export default function PlayersPage() {
       setLoading(false);
     }
   };
-
 
   useEffect(() => {
     fetchPlayers();
@@ -69,11 +69,8 @@ export default function PlayersPage() {
           ))}
         </tbody>
       </table>
-      <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-          <button disabled={page === 0} onClick={() => setPage(p => p - 1)}>Anterior</button>
-          <span>Página {page + 1} de {totalPages}</span>
-          <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Siguiente</button>
-      </div>
+      <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }
+

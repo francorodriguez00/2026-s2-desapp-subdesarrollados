@@ -3,6 +3,7 @@ import { getPlayers } from '../api/playerService';
 import { buyTokens, sellTokens } from '../api/orderService';
 import { getPrice } from '../api/marketService';
 import type { Player } from '../types/player';
+import { Pagination } from '../components/Pagination';
 
 export default function MarketPage() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -76,11 +77,7 @@ export default function MarketPage() {
           {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         
-        <div style={{ display: 'flex', gap: '5px' }}>
-            <button disabled={page === 0} onClick={() => setPage(p => p - 1)}>Anterior</button>
-            <span>Página {page + 1} de {totalPages}</span>
-            <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Siguiente</button>
-        </div>
+        <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
 
         {price !== null && <p>Precio unitario: {price} créditos</p>}
         
