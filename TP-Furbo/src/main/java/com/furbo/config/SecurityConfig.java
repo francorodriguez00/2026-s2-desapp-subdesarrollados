@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers("/players/**").permitAll()
                         .requestMatchers("/users/credits/deposit").authenticated()
                         .anyRequest().authenticated()
+
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
