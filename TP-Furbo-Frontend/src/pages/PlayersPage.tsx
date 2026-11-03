@@ -10,6 +10,7 @@ export default function PlayersPage() {
   const [nameSearch, setNameSearch] = useState('');
   const [league, setLeague] = useState('');
   const [position, setPosition] = useState('');
+  const [date, setDate] = useState('');
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function PlayersPage() {
   const fetchPlayers = async () => {
     try {
       setLoading(true);
-      const data = await getPlayers({ name: nameSearch, league, position, page, size: 20 });
+      const data = await getPlayers({ name: nameSearch, league, position, date: date ? `${date}T00:00:00` : undefined, page, size: 20 });
       setPlayers(data.content);
       setTotalPages(data.totalPages);
     } catch (err) {
@@ -29,7 +30,7 @@ export default function PlayersPage() {
 
   useEffect(() => {
     fetchPlayers();
-  }, [nameSearch, league, position, page]);
+  }, [nameSearch, league, position, date, page]);
 
   if (loading && players.length === 0) return <div>Cargando...</div>;
 
@@ -47,6 +48,7 @@ export default function PlayersPage() {
             <option value="">Todas las pos.</option>
             {['Goalkeeper', 'Defence', 'Midfield', 'Offence'].map(p => <option key={p} value={p}>{p}</option>)}
         </select>
+        <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setPage(0); }} />
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
@@ -67,7 +69,7 @@ export default function PlayersPage() {
               <td style={{ padding: '8px' }}>{p.position}</td>
               <td style={{ padding: '8px' }}>{p.team}</td>
               <td style={{ padding: '8px' }}>{p.league}</td>
-              <td style={{ padding: '8px' }}>{p.price} créditos</td>
+              <td style={{ padding: '8px' }}>{p.price ? `${p.price} créditos` : 'Sin cotización'}</td>
               <td style={{ padding: '8px' }}>
                 <button onClick={() => navigate(`/market?playerId=${p.id}`)}>Operar</button>
               </td>

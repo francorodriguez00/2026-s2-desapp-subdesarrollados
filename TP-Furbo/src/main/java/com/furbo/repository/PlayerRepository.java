@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -17,13 +18,14 @@ import java.util.List;
 public interface PlayerRepository extends JpaRepository<Player, Long>, JpaSpecificationExecutor<Player> {
     List<Player> findByExternalIdIn(Collection<Long> externalIds);
 
+
     @Query(value = "SELECT new com.furbo.adapter.dto.PlayerCatalogDTO(p.id, p.name, p.position, p.team, p.league, " +
-                   "(SELECT q.price FROM PlayerQuote q WHERE q.playerId = p.id ORDER BY q.calculatedAt DESC, q.id DESC LIMIT 1)) " +
+                   "(SELECT q.price FROM PlayerQuote q WHERE q.playerId = p.id AND q.calculatedAt <= :date ORDER BY q.calculatedAt DESC, q.id DESC LIMIT 1)) " +
                    "FROM Player p WHERE " +
                    "(:league = '' OR p.league = :league) AND " +
                    "(:position = '' OR p.position = :position) AND " +
                    "(:name = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) " +
-                   "ORDER BY (SELECT q.price FROM PlayerQuote q WHERE q.playerId = p.id ORDER BY q.calculatedAt DESC, q.id DESC LIMIT 1) DESC NULLS LAST, p.id ASC",
+                   "ORDER BY (SELECT q.price FROM PlayerQuote q WHERE q.playerId = p.id AND q.calculatedAt <= :date ORDER BY q.calculatedAt DESC, q.id DESC LIMIT 1) DESC NULLS LAST, p.id ASC",
            countQuery = "SELECT COUNT(p) FROM Player p WHERE " +
                         "(:league = '' OR p.league = :league) AND " +
                         "(:position = '' OR p.position = :position) AND " +
@@ -31,5 +33,6 @@ public interface PlayerRepository extends JpaRepository<Player, Long>, JpaSpecif
     Page<PlayerCatalogDTO> findPlayersCatalog(@Param("league") String league, 
                                              @Param("position") String position, 
                                              @Param("name") String name, 
+                                             @Param("date") LocalDateTime date,
                                              Pageable pageable);
 }
