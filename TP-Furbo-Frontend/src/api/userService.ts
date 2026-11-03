@@ -24,12 +24,6 @@ export const getPortfolio = async () => {
   }
 };
 
-export const getBalance = async () => {
-  try {
-    const { data } = await api.get<number>('/users/balance');
-    return data;
-  } catch (error) {
-    console.error("Error fetching balance:", error);
-    throw error;
-  }
+export const depositCredits = async (amount: number) => {
+  await api.post('/users/credits/deposit', { amount });
 };

@@ -14,6 +14,7 @@ import com.furbo.repository.TransactionRepository;
 import com.furbo.repository.UserRepository;
 import com.furbo.service.PriceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.security.Principal;
@@ -56,9 +57,25 @@ public class UserController {
         return new PortfolioResponseDTO(posDTOs, user.getBalance(), totalInvertido);
     }
 
-    @GetMapping("/balance")
-    public BigDecimal getBalance(Principal principal) {
-        return userRepository.findByEmail(principal.getName()).orElseThrow().getBalance();
+    @PostMapping("/credits/deposit")
+    @Transactional
+    public void depositCredits(Principal principal, @RequestBody Map<String, BigDecimal> body) {
+        BigDecimal amount = body.get("amount");
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Monto inválido");
+        }
+        com.furbo.model.User user = userRepository.findByEmail(principal.getName()).orElseThrow();
+        user.setBalance(user.getBalance().add(amount));
+        userRepository.save(user);
+
+        Transaction t = new Transaction();
+        t.setBuyerId(user.getId());
+        t.setSellerId(0L); // Indicador de depósito del sistema
+        t.setPlayerId(0L);
+        t.setQuantity(0);
+        t.setUnitPrice(amount);
+        t.setOperationId("DEP-" + java.util.UUID.randomUUID().toString());
+        transactionRepository.save(t);
     }
 
     @GetMapping("/transactions")
@@ -79,8 +96,9 @@ public class UserController {
         List<TransactionHistoryDTO> history = grouped.entrySet().stream().map(entry -> {
             List<Transaction> txs = entry.getValue();
             Transaction first = txs.get(0);
-            String pName = playerRepository.findById(first.getPlayerId()).map(Player::getName).orElse("Desconocido");
+            String pName = playerRepository.findById(first.getPlayerId()).map(Player::getName).orElse("DEPÓSITO");
             boolean isBuy = first.getBuyerId().equals(userId);
+            String opType = first.getPlayerId() == 0L ? "DEPÓSITO" : (isBuy ? "COMPRA" : "VENTA");
             
             List<TransactionHistoryDTO.TransactionDetailDTO> details = txs.stream()
                     .map(t -> new TransactionHistoryDTO.TransactionDetailDTO(t.getQuantity(), t.getUnitPrice()))
@@ -91,7 +109,7 @@ public class UserController {
 
             return new TransactionHistoryDTO(
                     entry.getKey(), pName, totalQty.intValue(), totalAmt, first.getCreatedAt(),
-                    isBuy ? "COMPRA" : "VENTA", details
+                    opType, details
             );
         }).collect(Collectors.toList());
 
