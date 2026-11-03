@@ -69,7 +69,7 @@ export default function PlayersPage() {
               <td style={{ padding: '8px' }}>{p.position}</td>
               <td style={{ padding: '8px' }}>{p.team}</td>
               <td style={{ padding: '8px' }}>{p.league}</td>
-              <td style={{ padding: '8px' }}>{p.price ? `${p.price} créditos` : 'Sin cotización'}</td>
+              <td style={{ padding: '8px' }}>{p.price ? `${p.price} créditos` : '1 créditos'}</td>
               <td style={{ padding: '8px' }}>
                 <button onClick={() => navigate(`/market?playerId=${p.id}`)}>Operar</button>
               </td>

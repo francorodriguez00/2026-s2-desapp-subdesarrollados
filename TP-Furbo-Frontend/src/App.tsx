@@ -39,9 +39,9 @@ const HomePage = () => {
     <div style={{ padding: '20px' }}>
       <h1>Bienvenido a FURBO</h1>
       <div style={{ padding: '15px', border: '1px solid #ccc', borderRadius: '5px' }}>
-        <p>Créditos Disponibles: {data ? `${data.balance} créditos` : '...'}</p>
-        <p>Créditos Invertidos: {data ? `${data.totalInvertido} créditos` : '...'}</p>
-        <p><strong>Total Valorizado: {data ? `${data.balance + data.totalInvertido} créditos` : '...'}</strong></p>
+        <p>Créditos Disponibles: {data ? `${data.balance.toFixed(2)} créditos` : '...'}</p>
+        <p>Créditos Invertidos: {data ? `${data.totalInvertido.toFixed(2)} créditos` : '...'}</p>
+        <p><strong>Total Valorizado: {data ? `${(data.balance + data.totalInvertido).toFixed(2)} créditos` : '...'}</strong></p>
       </div>
       <div style={{ marginTop: '20px' }}>
           <input type="number" value={deposito} onChange={(e) => setDeposito(Number(e.target.value))} />
