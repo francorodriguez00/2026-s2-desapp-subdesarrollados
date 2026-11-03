@@ -6,6 +6,8 @@ import com.furbo.repository.*;
 import com.furbo.service.valuation.*;
 import com.furbo.model.quoteStrategy.StrategyRegistry;
 import com.furbo.model.quoteStrategy.ValuationStrategy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -13,6 +15,7 @@ import java.util.*;
 
 @Service
 public class QuotationService {
+    private static final Logger log = LoggerFactory.getLogger(QuotationService.class);
     private final StrategyConfigRepository configRepository;
     private final PlayerQuoteRepository quoteRepository;
     private final PlayerStatsSource statsSource;
@@ -31,10 +34,21 @@ public class QuotationService {
                 .orElseThrow(() -> new IllegalStateException("No active strategy config"));
         ValuationStrategy strategy = registry.get(activeCfg.getStrategyCode());
 
+        int quotedCount = 0;
+        int skippedCount = 0;
+        int discardedNullIdCount = 0;
+
         for (PlayerStatsSnapshot s : statsSource.findAll()) {
+            if (s.playerId() == null) {
+                discardedNullIdCount++;
+                continue;
+            }
             Optional<PlayerQuote> last = quoteRepository.findFirstByPlayerIdOrderByCalculatedAtDescIdDesc(s.playerId());
             if (last.isPresent() && last.get().getStrategyConfigId().equals(activeCfg.getId()) 
-                && last.get().getStatsUpdatedAt().equals(s.updatedAt())) continue;
+                && last.get().getStatsUpdatedAt().equals(s.updatedAt())) {
+                skippedCount++;
+                continue;
+            }
 
             QuoteResult res = strategy.evaluate(s, activeCfg.getConfigJson());
             if (res != null) {
@@ -50,8 +64,11 @@ public class QuotationService {
                         .trigger(trigger)
                         .build();
                 quoteRepository.save(q);
+                quotedCount++;
             }
         }
+        log.info("Recálculo finalizado. Cotizados: {}, Sin cambios: {}, Descartados por playerId null: {}", 
+            quotedCount, skippedCount, discardedNullIdCount);
     }
 
     @Transactional
