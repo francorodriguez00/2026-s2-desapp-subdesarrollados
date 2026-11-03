@@ -42,11 +42,28 @@ public class UserController {
 
         BigDecimal totalInvertido = BigDecimal.ZERO;
         List<PortfolioResponseDTO.PositionDTO> posDTOs = portfolio.getPosiciones().stream()
+                .filter(p -> p.getCantidad() > 0)
                 .map(p -> {
                     Player player = playerRepository.findById(p.getPlayerId()).orElse(new Player());
                     BigDecimal price = priceProvider.getCurrentPrice(p.getPlayerId());
-                    BigDecimal total = price.multiply(BigDecimal.valueOf(p.getCantidad()));
-                    return new PortfolioResponseDTO.PositionDTO(p.getPlayerId(), player.getName(), p.getCantidad(), price, total);
+                    
+                    // Cálculo de precio promedio de compra
+                    List<Transaction> compras = transactionRepository.findByBuyerIdAndPlayerId(user.getId(), p.getPlayerId());
+                    BigDecimal totalInvertidoJugador = BigDecimal.ZERO;
+                    int cantidadComprada = 0;
+                    for (Transaction t : compras) {
+                        totalInvertidoJugador = totalInvertidoJugador.add(t.getUnitPrice().multiply(BigDecimal.valueOf(t.getQuantity())));
+                        cantidadComprada += t.getQuantity();
+                    }
+                    BigDecimal precioPromedio = cantidadComprada > 0 ? totalInvertidoJugador.divide(BigDecimal.valueOf(cantidadComprada), 2, java.math.RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                    
+                    BigDecimal valorTotal = price.multiply(BigDecimal.valueOf(p.getCantidad()));
+                    BigDecimal porcentajeGanancia = BigDecimal.ZERO;
+                    if (precioPromedio.compareTo(BigDecimal.ZERO) > 0) {
+                        porcentajeGanancia = price.subtract(precioPromedio).divide(precioPromedio, 4, java.math.RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100));
+                    }
+                    
+                    return new PortfolioResponseDTO.PositionDTO(p.getPlayerId(), player.getName(), p.getCantidad(), price, valorTotal, precioPromedio, porcentajeGanancia);
                 })
                 .collect(Collectors.toList());
 
@@ -89,7 +106,13 @@ public class UserController {
         List<Transaction> all = transactionRepository.findByBuyerIdOrSellerId(userId, userId);
 
         Map<String, List<Transaction>> grouped = all.stream()
-                .filter(t -> (type == null || type.isEmpty() || (type.equals("COMPRA") ? t.getBuyerId().equals(userId) : t.getSellerId().equals(userId))))
+                .filter(t -> {
+                    if (type == null || type.isEmpty()) return true;
+                    if (type.equals("DEPÓSITO")) return t.getPlayerId() == 0L;
+                    if (type.equals("COMPRA")) return t.getBuyerId().equals(userId) && t.getPlayerId() != 0L;
+                    if (type.equals("VENTA")) return t.getSellerId().equals(userId) && t.getPlayerId() != 0L;
+                    return true;
+                })
                 .filter(t -> (playerName == null || playerName.isEmpty() || playerRepository.findById(t.getPlayerId()).map(p -> p.getName().toLowerCase().contains(playerName.toLowerCase())).orElse(false)))
                 .collect(Collectors.groupingBy(Transaction::getOperationId));
 
@@ -105,7 +128,10 @@ public class UserController {
                     .collect(Collectors.toList());
 
             BigDecimal totalQty = BigDecimal.valueOf(txs.stream().mapToInt(Transaction::getQuantity).sum());
-            BigDecimal totalAmt = txs.stream().map(t -> t.getUnitPrice().multiply(BigDecimal.valueOf(t.getQuantity()))).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal totalAmt = txs.stream().map(t -> {
+                if (t.getPlayerId() == 0L) return t.getUnitPrice();
+                return t.getUnitPrice().multiply(BigDecimal.valueOf(t.getQuantity()));
+            }).reduce(BigDecimal.ZERO, BigDecimal::add);
 
             return new TransactionHistoryDTO(
                     entry.getKey(), pName, totalQty.intValue(), totalAmt, first.getCreatedAt(),

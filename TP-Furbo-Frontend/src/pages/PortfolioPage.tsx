@@ -39,19 +39,26 @@ export default function PortfolioPage() {
               <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
                 <th style={{ textAlign: 'left', padding: '8px' }}>Jugador</th>
                 <th style={{ textAlign: 'left', padding: '8px' }}>Cantidad</th>
-                <th style={{ textAlign: 'left', padding: '8px' }}>Precio Unit.</th>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Precio Prom.</th>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Precio Actual</th>
                 <th style={{ textAlign: 'left', padding: '8px' }}>Valor Total</th>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Ganancia/Pérdida</th>
               </tr>
             </thead>
             <tbody>
-              {portfolio.posiciones.filter(p => p.cantidad > 0).map((pos: any) => (
-                <tr key={pos.playerId} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <td style={{ padding: '8px' }}>{pos.playerName}</td>
-                  <td style={{ padding: '8px' }}>{pos.cantidad}</td>
-                  <td style={{ padding: '8px' }}>{pos.precioActual} créditos</td>
-                  <td style={{ padding: '8px' }}>{pos.valorTotal} créditos</td>
-                </tr>
-              ))}
+              {portfolio.posiciones.filter(p => p.cantidad > 0).map((pos: any) => {
+                const color = pos.porcentajeGanancia > 0 ? 'green' : pos.porcentajeGanancia < 0 ? 'red' : 'black';
+                return (
+                  <tr key={pos.playerId} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                    <td style={{ padding: '8px' }}>{pos.playerName}</td>
+                    <td style={{ padding: '8px' }}>{pos.cantidad}</td>
+                    <td style={{ padding: '8px' }}>{pos.precioPromedio.toFixed(2)}</td>
+                    <td style={{ padding: '8px' }}>{pos.precioActual.toFixed(2)}</td>
+                    <td style={{ padding: '8px' }}>{pos.valorTotal.toFixed(2)}</td>
+                    <td style={{ padding: '8px', color }}>{pos.porcentajeGanancia.toFixed(2)}%</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
           <div style={{ textAlign: 'right', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>

@@ -22,6 +22,7 @@ export default function TransactionsPage() {
           <option value="">Todos</option>
           <option value="COMPRA">Compras</option>
           <option value="VENTA">Ventas</option>
+          <option value="DEPÓSITO">Depósitos</option>
         </select>
         <select value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="DESC">Más reciente</option>
@@ -41,16 +42,19 @@ export default function TransactionsPage() {
           </tr>
         </thead>
         <tbody>
-          {transactions.map(t => (
+          {transactions.map(t => {
+            const isDeposito = t.type === 'DEPÓSITO';
+            return (
             <tr key={t.operationId} style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '8px' }}>{t.playerName}</td>
+              <td style={{ padding: '8px' }}>{isDeposito ? '-' : t.playerName}</td>
               <td style={{ padding: '8px' }}>{t.type}</td>
-              <td style={{ padding: '8px' }}>{t.totalQuantity}</td>
-              <td style={{ padding: '8px' }}>{t.details[0]?.unitPrice} cr.</td>
+              <td style={{ padding: '8px' }}>{isDeposito ? '-' : t.totalQuantity}</td>
+              <td style={{ padding: '8px' }}>{isDeposito ? '-' : `${t.details[0]?.unitPrice} cr.`}</td>
               <td style={{ padding: '8px' }}>{t.totalAmount} cr.</td>
               <td style={{ padding: '8px' }}>{new Date(t.createdAt).toLocaleString()}</td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

@@ -6,6 +6,8 @@ export interface Position {
   cantidad: number;
   precioActual: number;
   valorTotal: number;
+  precioPromedio: number;
+  porcentajeGanancia: number;
 }
 
 export interface Portfolio {

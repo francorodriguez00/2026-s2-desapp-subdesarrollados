@@ -22,5 +22,7 @@ public class PortfolioResponseDTO {
         private Integer cantidad;
         private java.math.BigDecimal precioActual;
         private java.math.BigDecimal valorTotal;
+        private java.math.BigDecimal precioPromedio;
+        private java.math.BigDecimal porcentajeGanancia;
     }
 }
