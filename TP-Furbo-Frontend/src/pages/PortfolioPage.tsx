@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
 import { getPortfolio } from '../api/userService';
 import type { Portfolio } from '../api/userService';
-
-console.log('SE RENDERIZA PortfolioPage'); // sacar
+import { useNavigate } from 'react-router-dom';
 
 export default function PortfolioPage() {
-
-  console.log('PortfolioPage ejecutándose'); // sacar
-
+  const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,6 +40,7 @@ export default function PortfolioPage() {
                 <th style={{ textAlign: 'left', padding: '8px' }}>Precio Actual</th>
                 <th style={{ textAlign: 'left', padding: '8px' }}>Valor Total</th>
                 <th style={{ textAlign: 'left', padding: '8px' }}>Ganancia/Pérdida</th>
+                <th style={{ textAlign: 'left', padding: '8px' }}>Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -56,6 +54,9 @@ export default function PortfolioPage() {
                     <td style={{ padding: '8px' }}>{pos.precioActual.toFixed(2)}</td>
                     <td style={{ padding: '8px' }}>{pos.valorTotal.toFixed(2)}</td>
                     <td style={{ padding: '8px', color }}>{pos.porcentajeGanancia.toFixed(2)}%</td>
+                    <td style={{ padding: '8px' }}>
+                        <button onClick={() => navigate(`/market?playerId=${pos.playerId}`)}>Operar</button>
+                    </td>
                   </tr>
                 );
               })}
@@ -69,5 +70,4 @@ export default function PortfolioPage() {
       )}
     </div>
   );
-
 }
