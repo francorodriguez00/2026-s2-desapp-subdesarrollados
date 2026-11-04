@@ -99,7 +99,7 @@ public class OrderService {
 
         order = orderRepository.save(order);
 
-        List<Trade> trades = matchOrder(order);
+        List<Trade> trades = matchOrder(order, java.util.UUID.randomUUID().toString());
 
         if (side == Order.OrderSide.BUY && type == Order.OrderType.MARKET && order.getQuantityRemaining() > 0) {
             throw new IllegalStateException("Stock insuficiente");
@@ -195,7 +195,7 @@ public class OrderService {
         }
     }
 
-    private List<Trade> matchOrder(Order order) {
+    private List<Trade> matchOrder(Order order, String operationId) {
         List<Trade> trades = new ArrayList<>();
         Long playerId = order.getPlayerId();
 
@@ -210,7 +210,7 @@ public class OrderService {
                 int canTake = Math.min(order.getQuantityRemaining(), bestSource.remainingQuantity);
                 if (canTake <= 0) break;
 
-                Trade trade = executeTrade(order, bestSource, canTake, bestSource.price);
+                Trade trade = executeTrade(order, bestSource, canTake, bestSource.price, java.util.UUID.randomUUID().toString());
                 trades.add(trade);
 
                 order.setQuantityRemaining(order.getQuantityRemaining() - canTake);
@@ -236,10 +236,10 @@ public class OrderService {
                 int canTake = Math.min(order.getQuantityRemaining(), bestBuy.getQuantityRemaining());
                 if (canTake <= 0) break;
 
-                Trade trade = executeSellTrade(order, bestBuy, canTake, bestBuy.getPrice());
+                Trade trade = executeSellTrade(order, bestBuy, canTake, bestBuy.getPrice(), java.util.UUID.randomUUID().toString());
                 trades.add(trade);
 
-                order.setQuantityRemaining(order.getQuantityRemaining() - canTake);
+                order.setQuantityRemaining(order.getQuantityRemaining() - trade.getQuantity());
                 if (order.getQuantityRemaining() == 0) {
                     order.setStatus(Order.OrderStatus.FILLED);
                 } else {
@@ -292,7 +292,7 @@ public class OrderService {
         return sources;
     }
 
-    private Trade executeTrade(Order buyerOrder, SellSource sellerSource, int quantity, BigDecimal executionPrice) {
+    private Trade executeTrade(Order buyerOrder, SellSource sellerSource, int quantity, BigDecimal executionPrice, String operationId) {
         Long buyerId = buyerOrder.getUserId();
         Long sellerId = sellerSource.userId;
 
@@ -363,7 +363,6 @@ public class OrderService {
             sellerOrderId = sellOrder.getId();
         }
 
-        String operationId = UUID.randomUUID().toString();
         Transaction tx = new Transaction();
         tx.setBuyerId(buyerId);
         tx.setSellerId(sellerId);
@@ -386,7 +385,7 @@ public class OrderService {
         return tradeRepository.save(trade);
     }
 
-    private Trade executeSellTrade(Order sellOrder, Order buyerOrder, int quantity, BigDecimal executionPrice) {
+    private Trade executeSellTrade(Order sellOrder, Order buyerOrder, int quantity, BigDecimal executionPrice, String operationId) {
         Long sellerId = sellOrder.getUserId();
         Long buyerId = buyerOrder.getUserId();
 
@@ -439,7 +438,6 @@ public class OrderService {
         sellerPos.setReservedQuantity(sellerPos.getReservedQuantity() - quantity);
         posicionRepository.save(sellerPos);
 
-        String operationId = UUID.randomUUID().toString();
         Transaction tx = new Transaction();
         tx.setBuyerId(buyerId);
         tx.setSellerId(sellerId);

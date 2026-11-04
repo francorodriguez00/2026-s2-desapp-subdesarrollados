@@ -21,6 +21,7 @@ public class OrderServiceTest {
 
     @Mock private OrderRepository orderRepository;
     @Mock private TradeRepository tradeRepository;
+    @Mock private TransactionRepository transactionRepository;
     @Mock private UserRepository userRepository;
     @Mock private PortfolioRepository portfolioRepository;
     @Mock private PosicionPorJugadorRepository posicionRepository;
