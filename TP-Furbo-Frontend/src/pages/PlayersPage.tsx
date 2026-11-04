@@ -1,28 +1,65 @@
 import { useEffect, useState } from 'react';
 import { getPlayers } from '../api/playerService';
 import type { Player } from '../types/player';
+import { Pagination } from '../components/Pagination';
+import { useNavigate } from 'react-router-dom';
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nameSearch, setNameSearch] = useState('');
+  const [league, setLeague] = useState('');
+  const [position, setPosition] = useState('');
+  const [date, setDate] = useState('');
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const navigate = useNavigate();
+
+  const fetchPlayers = async () => {
+    try {
+      setLoading(true);
+      const data = await getPlayers({ name: nameSearch, league, position, date: date ? `${date}T00:00:00` : undefined, page, size: 20 });
+      setPlayers(data.content);
+      setTotalPages(data.totalPages);
+    } catch (err) {
+      console.error("Error loading players:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    getPlayers()
-      .then(setPlayers)
-      .finally(() => setLoading(false));
-  }, []);
+    fetchPlayers();
+  }, [nameSearch, league, position, date, page]);
 
-  if (loading) return <div>Cargando...</div>;
+  if (loading && players.length === 0) return <div>Cargando...</div>;
 
   return (
     <div>
       <h1>Catálogo de Jugadores</h1>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <input placeholder="Nombre..." value={nameSearch} onChange={(e) => { setNameSearch(e.target.value); setPage(0); }} />
+        <select value={league} onChange={(e) => { setLeague(e.target.value); setPage(0); }}>
+            <option value="">Todas las ligas</option>
+            {['PL', 'PD', 'SA', 'BL1', 'FL1'].map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <select value={position} onChange={(e) => { setPosition(e.target.value); setPage(0); }}>
+            <option value="">Todas las pos.</option>
+            {['Goalkeeper', 'Defence', 'Midfield', 'Offence'].map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setPage(0); }} />
+      </div>
+
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
             <th style={{ textAlign: 'left', padding: '8px' }}>Nombre</th>
             <th style={{ textAlign: 'left', padding: '8px' }}>Posición</th>
             <th style={{ textAlign: 'left', padding: '8px' }}>Equipo</th>
+            <th style={{ textAlign: 'left', padding: '8px' }}>Liga</th>
+            <th style={{ textAlign: 'left', padding: '8px' }}>Cotización</th>
+            <th style={{ textAlign: 'left', padding: '8px' }}>Acción</th>
           </tr>
         </thead>
         <tbody>
@@ -31,10 +68,17 @@ export default function PlayersPage() {
               <td style={{ padding: '8px' }}>{p.name}</td>
               <td style={{ padding: '8px' }}>{p.position}</td>
               <td style={{ padding: '8px' }}>{p.team}</td>
+              <td style={{ padding: '8px' }}>{p.league}</td>
+              <td style={{ padding: '8px' }}>{p.price ? `${p.price} créditos` : '1 créditos'}</td>
+              <td style={{ padding: '8px' }}>
+                <button onClick={() => navigate(`/market?playerId=${p.id}`)}>Operar</button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }
+

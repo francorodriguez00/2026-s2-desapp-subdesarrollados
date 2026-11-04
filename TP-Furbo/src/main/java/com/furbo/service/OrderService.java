@@ -61,15 +61,20 @@ public class OrderService {
             throw new IllegalStateException("Saldo insuficiente");
         }
 
+        buyer.setBalance(buyer.getBalance().subtract(price.multiply(BigDecimal.valueOf(quantity))));
+        userRepository.save(buyer);
+
         List<SellOffer> offers = sellOfferRepository.findOpenOffersForPlayer(playerId);
-        int remainingToBuy = quantity;
+        String operationId = java.util.UUID.randomUUID().toString();
+        int processedQuantity = 0;
 
         for (SellOffer offer : offers) {
             if (offer.getSellerId().equals(buyerId)) continue; 
 
-            int canTake = Math.min(remainingToBuy, offer.getQuantityRemaining());
+            int canTake = Math.min(quantity - processedQuantity, offer.getQuantityRemaining());
+            if (canTake <= 0) continue;
             
-            // Procesar vendedor (decremento)
+            // Procesar vendedor (decremento y pago)
             User seller = userRepository.findById(offer.getSellerId()).orElseThrow();
             Portfolio sellerPortfolio = portfolioRepository.findByUser(seller).orElseThrow();
             PosicionPorJugador sellerPos = posicionRepository.findByPortfolioIdAndPlayerId(sellerPortfolio.getId(), playerId).orElseThrow();
@@ -77,6 +82,10 @@ public class OrderService {
             sellerPos.setCantidad(sellerPos.getCantidad() - canTake);
             sellerPos.setReservedQuantity(sellerPos.getReservedQuantity() - canTake);
             posicionRepository.save(sellerPos);
+
+            BigDecimal pagoVendedor = price.multiply(BigDecimal.valueOf(canTake));
+            seller.setBalance(seller.getBalance().add(pagoVendedor));
+            userRepository.save(seller);
 
             // Procesar comprador (incremento)
             PosicionPorJugador buyerPos = posicionRepository.findByPortfolioIdAndPlayerId(buyerPortfolio.getId(), playerId)
@@ -93,22 +102,21 @@ public class OrderService {
             if (offer.getQuantityRemaining() == 0) offer.setStatus(SellOffer.OfferStatus.FILLED);
             sellOfferRepository.save(offer);
 
-            remainingToBuy -= canTake;
-            if (remainingToBuy == 0) break;
+            // Registro de transacción individual
+            Transaction transaction = new Transaction();
+            transaction.setBuyerId(buyerId);
+            transaction.setSellerId(offer.getSellerId());
+            transaction.setPlayerId(playerId);
+            transaction.setQuantity(canTake);
+            transaction.setUnitPrice(price);
+            transaction.setOperationId(operationId);
+            transaction.setCreatedAt(java.time.LocalDateTime.now());
+            transactionRepository.save(transaction);
+
+            processedQuantity += canTake;
+            if (processedQuantity == quantity) break;
         }
 
-        if (remainingToBuy > 0) throw new IllegalStateException("Stock insuficiente");
-
-        buyer.setBalance(buyer.getBalance().subtract(price.multiply(BigDecimal.valueOf(quantity))));
-        userRepository.save(buyer);
-
-        Transaction transaction = new Transaction();
-        transaction.setBuyerId(buyerId);
-        transaction.setPlayerId(playerId);
-        transaction.setQuantity(quantity);
-        transaction.setUnitPrice(price);
-        transaction.setCreatedAt(java.time.LocalDateTime.now());
-        // sellerId es opcional en Transaction, si es multi-vendedor no está claro cuál poner.
-        transactionRepository.save(transaction);
+        if (processedQuantity < quantity) throw new IllegalStateException("Stock insuficiente");
     }
 }

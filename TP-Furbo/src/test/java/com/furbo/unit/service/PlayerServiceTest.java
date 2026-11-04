@@ -87,7 +87,7 @@ class PlayerServiceTest {
         when(playerRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(player)));
 
-        Page<Player> result = playerService.getPlayers(null, null, null, pageable);
+        Page<Player> result = playerService.getPlayers(null, null, null, null, pageable);
 
         assertEquals(1, result.getTotalElements());
         assertEquals("Messi", result.getContent().get(0).getName());
@@ -96,7 +96,7 @@ class PlayerServiceTest {
     @Test
     void getPlayers_conLigaInvalida_lanzaExcepcionYNoConsultaElRepo() {
         InvalidFilterException ex = assertThrows(InvalidFilterException.class,
-                () -> playerService.getPlayers("INVALID_LEAGUE", null, null, Pageable.unpaged()));
+                () -> playerService.getPlayers("INVALID_LEAGUE", null, null, null, Pageable.unpaged()));
 
         assertEquals("La liga solicitada no existe", ex.getMessage());
         verifyNoInteractions(playerRepository);
@@ -105,7 +105,7 @@ class PlayerServiceTest {
     @Test
     void getPlayers_conPosicionInvalida_lanzaExcepcionYNoConsultaElRepo() {
         InvalidFilterException ex = assertThrows(InvalidFilterException.class,
-                () -> playerService.getPlayers(null, null, "INVALID_POSITION", Pageable.unpaged()));
+                () -> playerService.getPlayers(null, null, "INVALID_POSITION", null, Pageable.unpaged()));
 
         assertEquals("La posición solicitada no existe", ex.getMessage());
         verifyNoInteractions(playerRepository);
@@ -116,7 +116,7 @@ class PlayerServiceTest {
         Pageable pageable = PageRequest.of(0, 10, Sort.by("invalid_field"));
 
         InvalidFilterException ex = assertThrows(InvalidFilterException.class,
-                () -> playerService.getPlayers(null, null, null, pageable));
+                () -> playerService.getPlayers(null, null, null, null, pageable));
 
         assertTrue(ex.getMessage().contains("invalid_field"));
         verifyNoInteractions(playerRepository);
@@ -128,7 +128,7 @@ class PlayerServiceTest {
         when(playerRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(Page.empty());
 
-        assertDoesNotThrow(() -> playerService.getPlayers(null, null, null, pageable));
+        assertDoesNotThrow(() -> playerService.getPlayers(null, null, null, null, pageable));
 
         verify(playerRepository).findAll(any(Specification.class), eq(pageable));
     }
@@ -142,7 +142,7 @@ class PlayerServiceTest {
         // League.values()[0] evita adivinar qué strings acepta parse()
         String liga = League.values()[0].name();
 
-        assertDoesNotThrow(() -> playerService.getPlayers(liga, "  Barcelona  ", null, pageable));
+        assertDoesNotThrow(() -> playerService.getPlayers(liga, "  Barcelona  ", null, null, pageable));
 
         verify(playerRepository).findAll(any(Specification.class), eq(pageable));
     }

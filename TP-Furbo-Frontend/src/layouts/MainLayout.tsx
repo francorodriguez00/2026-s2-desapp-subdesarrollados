@@ -18,6 +18,7 @@ export default function MainLayout() {
         <NavLink style={navStyle} to="/portfolio">Portfolio</NavLink>
         <NavLink style={navStyle} to="/market">Mercado</NavLink>
         <NavLink style={navStyle} to="/transactions">Movimientos</NavLink>
+        <NavLink style={navStyle} to="/operations">Operaciones</NavLink>
         <button onClick={logout} style={{ marginLeft: 'auto' }}>Cerrar Sesión</button>
       </nav>
       <main style={{ padding: '20px' }}>

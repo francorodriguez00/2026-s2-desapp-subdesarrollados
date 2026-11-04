@@ -10,7 +10,7 @@ import java.util.List;
 public final class PlayerSpecs {
     private PlayerSpecs() {}
 
-    public static Specification<Player> withFilters(String league, String team, String position) {
+    public static Specification<Player> withFilters(String league, String team, String position, String name) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (league != null)
@@ -20,6 +20,9 @@ public final class PlayerSpecs {
                         "%" + escapeLike(team.toLowerCase()) + "%", '\\'));
             if (position != null)
                 predicates.add(cb.equal(root.get("position"), position));
+            if (name != null)
+                predicates.add(cb.like(cb.lower(root.get("name")),
+                        "%" + escapeLike(name.toLowerCase()) + "%", '\\'));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }

@@ -21,5 +21,6 @@ public class Transaction {
     private Long playerId;
     private Integer quantity;
     private java.math.BigDecimal unitPrice;
+    private String operationId;
     private LocalDateTime createdAt = LocalDateTime.now();
 }

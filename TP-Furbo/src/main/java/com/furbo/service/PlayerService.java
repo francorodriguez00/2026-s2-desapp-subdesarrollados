@@ -76,7 +76,7 @@ public class PlayerService {
 
     private record PlayerSnapshot(Long externalId, String name, String position, String nationality, String team) {}
 
-    public Page<Player> getPlayers(String league, String team, String position, Pageable pageable) {
+    public Page<Player> getPlayers(String league, String team, String position, String name, Pageable pageable) {
         String leagueCode = null;
         if (StringUtils.hasText(league)) {
             leagueCode = League.parse(league)
@@ -92,6 +92,7 @@ public class PlayerService {
         }
 
         String teamValue = StringUtils.hasText(team) ? team.trim() : null;
+        String nameValue = StringUtils.hasText(name) ? name.trim() : null;
 
         pageable.getSort().forEach(order -> {
             if (!SORTABLE.contains(order.getProperty()))
@@ -99,7 +100,7 @@ public class PlayerService {
         });
 
         return playerRepository.findAll(
-                PlayerSpecs.withFilters(leagueCode, teamValue, positionValue), pageable);
+                PlayerSpecs.withFilters(leagueCode, teamValue, positionValue, nameValue), pageable);
     }
 
     public void fetchAndSavePlayers() {

@@ -10,12 +10,19 @@ import java.util.List;
 @NoArgsConstructor
 public class PortfolioResponseDTO {
     private List<PositionDTO> posiciones;
+    private java.math.BigDecimal saldoDisponible;
+    private java.math.BigDecimal totalInvertido;
 
     @Data
     @AllArgsConstructor
     @NoArgsConstructor
     public static class PositionDTO {
         private Long playerId;
+        private String playerName;
         private Integer cantidad;
+        private java.math.BigDecimal precioActual;
+        private java.math.BigDecimal valorTotal;
+        private java.math.BigDecimal precioPromedio;
+        private java.math.BigDecimal porcentajeGanancia;
     }
 }
