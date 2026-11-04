@@ -42,6 +42,7 @@ public class OrderControllerTest {
     @MockBean private OrderService orderService;
     @MockBean private UserRepository userRepository;
     @MockBean private com.furbo.repository.OrderRepository orderRepository;
+    @MockBean private com.furbo.repository.PlayerRepository playerRepository;
 
     private static final Principal USER = () -> "user@furbo.com";
 

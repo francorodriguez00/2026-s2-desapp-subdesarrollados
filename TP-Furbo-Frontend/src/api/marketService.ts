@@ -22,6 +22,7 @@ export interface SellOfferDTO {
 export interface UserOrder {
   id: number;
   playerId: number;
+  playerName: string;
   side: 'BUY' | 'SELL';
   type: 'LIMIT' | 'MARKET';
   status: 'OPEN' | 'PARTIAL' | 'FILLED' | 'CANCELLED';

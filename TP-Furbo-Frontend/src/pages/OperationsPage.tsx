@@ -30,6 +30,7 @@ export default function OperationsPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #ccc' }}>
+              <th style={{ padding: '8px', textAlign: 'left' }}>Jugador</th>
               <th style={{ padding: '8px', textAlign: 'left' }}>Lado</th>
               <th style={{ padding: '8px', textAlign: 'left' }}>Tipo</th>
               <th style={{ padding: '8px', textAlign: 'left' }}>Precio</th>
@@ -41,6 +42,7 @@ export default function OperationsPage() {
           <tbody>
             {orders.map(o => (
               <tr key={o.id} style={{ borderBottom: '1px solid #eee' }}>
+                <td style={{ padding: '8px' }}>{o.playerName}</td>
                 <td style={{ padding: '8px', color: o.side === 'BUY' ? 'green' : 'red' }}>{o.side}</td>
                 <td style={{ padding: '8px' }}>{o.type}</td>
                 <td style={{ padding: '8px' }}>${o.price}</td>
