@@ -110,19 +110,21 @@ export default function MarketPage() {
   };
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div style={{ padding: 'var(--space-lg)' }}>
       <h1>Mercado</h1>
       {message && <p style={{ color: message.type === 'error' ? 'var(--color-negative)' : 'var(--color-positive)' }}>{message.text}</p>}
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <input 
+              className="input-field"
               placeholder="Buscar jugador..." 
               value={nameSearch} 
               onChange={(e) => { setNameSearch(e.target.value); setPage(0); }} 
           />
           
           <select 
+            className="input-field"
             onChange={(e) => setPlayerId(e.target.value === '' ? '' : Number(e.target.value))} 
             value={playerId === '' ? '' : playerId}
           >
@@ -156,6 +158,7 @@ export default function MarketPage() {
 
             {orderType === 'LIMIT' && (
               <input 
+                className="input-field"
                 type="number" 
                 step="0.01" 
                 placeholder="Precio límite (±50% banda)" 
@@ -164,48 +167,49 @@ export default function MarketPage() {
               />
             )}
 
-            <input type="number" min="1" placeholder="Cantidad" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
+            <input className="input-field" type="number" min="1" placeholder="Cantidad" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
             
             {subtotal > 0 && (
-                <div style={{ padding: '10px', background: '#f0f0f0', borderRadius: '4px' }}>
+                <div className="card" style={{ padding: '10px' }}>
                     <p>Subtotal: ${subtotal.toFixed(2)}</p>
                     <p>Comisión (0.5%): ${commission.toFixed(2)}</p>
                     <strong>{orderSide === 'BUY' ? 'Total a pagar' : 'Total a recibir'}: ${total.toFixed(2)}</strong>
                 </div>
             )}
             
-            <button type="submit" disabled={loading || !playerId}>
+            <button className="btn btn-primary" type="submit" disabled={loading || !playerId}>
               {orderSide === 'BUY' ? 'Enviar Compra' : 'Enviar Venta'}
             </button>
           </form>
         </div>
 
+            {/* Caja de Puntas (Order Book) */}
         <div>
           <h3>Caja de Puntas</h3>
           {playerId ? (
             orderBook ? (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div style={{ border: '1px solid #ccc', padding: '10px' }}>
+                <div className="card">
                   <h4 style={{ color: 'green' }}>Compra</h4>
-                  <table style={{ width: '100%', fontSize: '14px', textAlign: 'center' }}>
-                    <thead><tr><th>Precio</th><th>Cant</th></tr></thead>
+                  <table className="table-base">
+                    <thead><tr><th className="numeric">Precio</th><th className="numeric">Cant</th></tr></thead>
                     <tbody>
                       {orderBook.buyLevels.map((lvl, idx) => (
-                        <tr key={idx}><td>${lvl.price.toFixed(2)}</td><td>{lvl.totalQuantity}</td></tr>
+                        <tr key={idx}><td className="numeric">${lvl.price.toFixed(2)}</td><td className="numeric">{lvl.totalQuantity}</td></tr>
                       ))}
-                      {orderBook.buyLevels.length === 0 && <tr><td colSpan={2}>Sin ofertas</td></tr>}
+                      {orderBook.buyLevels.length === 0 && <tr><td colSpan={2} style={{textAlign:'center'}}>Sin ofertas</td></tr>}
                     </tbody>
                   </table>
                 </div>
-                <div style={{ border: '1px solid #ccc', padding: '10px' }}>
+                <div className="card">
                   <h4 style={{ color: 'red' }}>Venta</h4>
-                  <table style={{ width: '100%', fontSize: '14px', textAlign: 'center' }}>
-                    <thead><tr><th>Precio</th><th>Cant</th></tr></thead>
+                  <table className="table-base">
+                    <thead><tr><th className="numeric">Precio</th><th className="numeric">Cant</th></tr></thead>
                     <tbody>
                       {orderBook.sellLevels.map((lvl, idx) => (
-                        <tr key={idx}><td>${lvl.price.toFixed(2)}</td><td>{lvl.totalQuantity}</td></tr>
+                        <tr key={idx}><td className="numeric">${lvl.price.toFixed(2)}</td><td className="numeric">{lvl.totalQuantity}</td></tr>
                       ))}
-                      {orderBook.sellLevels.length === 0 && <tr><td colSpan={2}>Sin ofertas</td></tr>}
+                      {orderBook.sellLevels.length === 0 && <tr><td colSpan={2} style={{textAlign:'center'}}>Sin ofertas</td></tr>}
                     </tbody>
                   </table>
                 </div>

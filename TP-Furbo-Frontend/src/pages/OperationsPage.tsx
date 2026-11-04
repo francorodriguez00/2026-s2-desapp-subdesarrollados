@@ -49,7 +49,7 @@ export default function OperationsPage() {
                 <td style={{ padding: '8px' }}>{o.quantityRemaining}</td>
                 <td style={{ padding: '8px' }}>{o.status}</td>
                 <td style={{ padding: '8px' }}>
-                  <button onClick={() => handleCancelOrder(o.id)} style={{ color: 'red' }}>Cancelar</button>
+                  <button className="btn btn-danger" onClick={() => handleCancelOrder(o.id)}>Cancelar</button>
                 </td>
               </tr>
             ))}
