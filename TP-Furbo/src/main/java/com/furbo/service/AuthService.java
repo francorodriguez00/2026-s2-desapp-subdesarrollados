@@ -1,6 +1,7 @@
 package com.furbo.service;
 
 import com.furbo.adapter.dto.LoginRequestDTO;
+import com.furbo.adapter.dto.LoginResponseDTO;
 import com.furbo.adapter.dto.RegisterRequestDTO;
 import com.furbo.exceptions.InvalidCredentialsException;
 import com.furbo.model.Portfolio;
@@ -35,6 +36,7 @@ public class AuthService {
         User user = new User();
         user.setEmail(dto.getEmail());
         user.setPassword(passwordHasher.hash(dto.getPassword()));
+        user.setName(dto.getName());
         user.setBalance(java.math.BigDecimal.valueOf(100));
         user.setIsSuperuser(false);
         userRepository.save(user);
@@ -45,10 +47,12 @@ public class AuthService {
     }
 
     @Transactional
-    public String login(LoginRequestDTO loginRequest) {
+    public LoginResponseDTO login(LoginRequestDTO loginRequest) {
         Optional<User> userOpt = userRepository.findByEmail(loginRequest.getEmail());
         if (userOpt.isPresent() && passwordHasher.verify(loginRequest.getPassword(), userOpt.get().getPassword())) {
-            return jwtService.generateToken(userOpt.get().getEmail());
+            User user = userOpt.get();
+            String token = jwtService.generateToken(user.getEmail());
+            return new LoginResponseDTO(token, user.getName(), user.getEmail());
         }
         throw new InvalidCredentialsException("Invalid credentials");
     }

@@ -15,13 +15,15 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const HomePage = () => {
-  const [data, setData] = useState<{ balance: number, totalInvertido: number } | null>(null);
+  const [data, setData] = useState<{ balance: number, totalInvertido: number, userName?: string } | null>(null);
   const [deposito, setDeposito] = useState<number>(0);
+  const [user, setUser] = useState<{ name: string } | null>(null);
 
   const loadData = async () => {
       try {
           const port = await getPortfolio();
-          setData({ balance: port.saldoDisponible, totalInvertido: port.totalInvertido });
+          setData({ balance: port.saldoDisponible, totalInvertido: port.totalInvertido, userName: port.userName });
+          setUser({ name: port.userName || sessionStorage.getItem('name') || sessionStorage.getItem('email') || 'Usuario' });
       } catch (e) {
           console.error(e);
       }
@@ -36,16 +38,16 @@ const HomePage = () => {
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>Bienvenido a FURBO</h1>
-      <div style={{ padding: '15px', border: '1px solid #ccc', borderRadius: '5px' }}>
+    <div style={{ padding: 'var(--space-md)' }}>
+      <h1>Bienvenido a FURBO, {user?.name}</h1>
+      <div className="card">
         <p>Créditos Disponibles: {data ? `${data.balance.toFixed(2)} créditos` : '...'}</p>
         <p>Créditos Invertidos: {data ? `${data.totalInvertido.toFixed(2)} créditos` : '...'}</p>
         <p><strong>Total Valorizado: {data ? `${(data.balance + data.totalInvertido).toFixed(2)} créditos` : '...'}</strong></p>
       </div>
-      <div style={{ marginTop: '20px' }}>
-          <input type="number" value={deposito} onChange={(e) => setDeposito(Number(e.target.value))} />
-          <button onClick={handleDeposit}>Depositar Créditos</button>
+      <div style={{ marginTop: 'var(--space-sm)', display: 'flex', gap: '8px' }}>
+          <input className="input-field" type="number" value={deposito} onChange={(e) => setDeposito(Number(e.target.value))} />
+          <button className="btn btn-primary" onClick={handleDeposit}>Depositar Créditos</button>
       </div>
     </div>
   );

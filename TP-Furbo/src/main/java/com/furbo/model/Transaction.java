@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,7 +21,10 @@ public class Transaction {
     private Long sellerId;
     private Long playerId;
     private Integer quantity;
-    private java.math.BigDecimal unitPrice;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal unitPrice;
+    @Column(precision = 19, scale = 2)
+    private BigDecimal commission = BigDecimal.ZERO;
     private String operationId;
     private LocalDateTime createdAt = LocalDateTime.now();
 }

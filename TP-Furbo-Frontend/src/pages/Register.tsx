@@ -15,15 +15,26 @@ export default function Register() {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', maxWidth: '300px', margin: 'auto', gap: '8px' }}>
-      <h1>Registro</h1>
-      <input type="text" placeholder="Nombre" onChange={(e) => setName(e.target.value)} required />
-      <input type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} required />
-      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} required />
-      <button type="submit">Registrarse</button>
-      <p style={{ marginTop: '16px', textAlign: 'center' }}>
-        ¿Ya tenés cuenta? <a href="/login">Iniciá sesión</a>
-      </p>
-    </form>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '16px' }}>
+      <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '400px', gap: '16px', padding: '32px' }}>
+        <h1 style={{ textAlign: 'center', margin: '0 0 8px 0', borderBottom: 'none' }}>Registro</h1>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label style={{ fontWeight: 500, fontSize: '14px' }}>Nombre</label>
+          <input className="input-field" type="text" placeholder="Tu Nombre" style={{ padding: '12px 16px', fontSize: '15px', width: '100%', boxSizing: 'border-box' }} onChange={(e) => setName(e.target.value)} required />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label style={{ fontWeight: '500', fontSize: '14px' }}>Email</label>
+          <input className="input-field" type="email" placeholder="tu@email.com" style={{ padding: '12px 16px', fontSize: '15px', width: '100%', boxSizing: 'border-box' }} onChange={(e) => setEmail(e.target.value)} required />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label style={{ fontWeight: 500, fontSize: '14px' }}>Contraseña</label>
+          <input className="input-field" type="password" placeholder="••••••••" style={{ padding: '12px 16px', fontSize: '15px', width: '100%', boxSizing: 'border-box' }} onChange={(e) => setPassword(e.target.value)} required />
+        </div>
+        <button type="submit" className="btn btn-primary" style={{ padding: '14px', fontSize: '16px', fontWeight: 600, marginTop: '8px', width: '100%' }}>Registrarse</button>
+        <p style={{ marginTop: '12px', textAlign: 'center', fontSize: '14px' }}>
+          ¿Ya tenés cuenta? <a href="/login" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: '500' }}>Iniciá sesión</a>
+        </p>
+      </form>
+    </div>
   );
 }

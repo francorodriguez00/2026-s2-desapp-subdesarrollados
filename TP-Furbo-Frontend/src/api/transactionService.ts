@@ -3,6 +3,7 @@ import api from '../api/axiosConfig';
 export interface TransactionDetail {
   quantity: number;
   unitPrice: number;
+  commission: number;
 }
 
 export interface Transaction {
@@ -10,6 +11,7 @@ export interface Transaction {
   playerName: string;
   totalQuantity: number;
   totalAmount: number;
+  totalCommission: number;
   createdAt: string;
   type: 'COMPRA' | 'VENTA';
   details: TransactionDetail[];

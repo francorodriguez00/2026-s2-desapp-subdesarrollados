@@ -1,50 +1,55 @@
 import { useState, useEffect } from 'react';
-import { getMyOffers, cancelOffer } from '../api/marketService';
-import type { SellOfferDTO } from '../api/marketService';
+import { getMyOrders, cancelOrder } from '../api/marketService';
+import type { UserOrder } from '../api/marketService';
 
 export default function OperationsPage() {
-  const [offers, setOffers] = useState<SellOfferDTO[]>([]);
+  const [orders, setOrders] = useState<UserOrder[]>([]);
 
   useEffect(() => {
-    loadOffers();
+    loadOrders();
   }, []);
 
-  const loadOffers = () => {
-    getMyOffers().then(setOffers).catch(console.error);
+  const loadOrders = () => {
+    getMyOrders().then(setOrders).catch(console.error);
   };
 
-  const handleCancel = async (id: number) => {
+  const handleCancelOrder = async (id: number) => {
     if (window.confirm("¿Seguro que deseas cancelar esta orden?")) {
-        await cancelOffer(id);
-        loadOffers();
+        await cancelOrder(id);
+        loadOrders();
     }
   };
 
   return (
-    <div>
-      <h1>Mis Operaciones</h1>
-      {offers.length === 0 ? (
-        <p>No hay operaciones para mostrar</p>
+    <div style={{ padding: '20px' }}>
+      <h1>Órdenes Abiertas</h1>
+      
+      {orders.length === 0 ? (
+        <p>No hay órdenes abiertas</p>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #ccc' }}>
               <th style={{ padding: '8px', textAlign: 'left' }}>Jugador</th>
-              <th style={{ padding: '8px', textAlign: 'left' }}>Cantidad</th>
-              <th style={{ padding: '8px', textAlign: 'left' }}>Precio Mercado</th>
-              <th style={{ padding: '8px', textAlign: 'left' }}>Fecha</th>
+              <th style={{ padding: '8px', textAlign: 'left' }}>Lado</th>
+              <th style={{ padding: '8px', textAlign: 'left' }}>Tipo</th>
+              <th style={{ padding: '8px', textAlign: 'left' }}>Precio</th>
+              <th style={{ padding: '8px', textAlign: 'left' }}>Restante</th>
+              <th style={{ padding: '8px', textAlign: 'left' }}>Estado</th>
               <th style={{ padding: '8px', textAlign: 'left' }}>Acción</th>
             </tr>
           </thead>
           <tbody>
-            {offers.map(o => (
+            {orders.map(o => (
               <tr key={o.id} style={{ borderBottom: '1px solid #eee' }}>
                 <td style={{ padding: '8px' }}>{o.playerName}</td>
+                <td style={{ padding: '8px', color: o.side === 'BUY' ? 'green' : 'red' }}>{o.side}</td>
+                <td style={{ padding: '8px' }}>{o.type}</td>
+                <td style={{ padding: '8px' }}>${o.price}</td>
                 <td style={{ padding: '8px' }}>{o.quantityRemaining}</td>
-                <td style={{ padding: '8px' }}>{o.currentPrice} créditos</td>
-                <td style={{ padding: '8px' }}>{new Date(o.createdAt).toLocaleString()}</td>
+                <td style={{ padding: '8px' }}>{o.status}</td>
                 <td style={{ padding: '8px' }}>
-                  <button onClick={() => handleCancel(o.id)} style={{ color: 'red' }}>Cancelar</button>
+                  <button className="btn btn-danger" onClick={() => handleCancelOrder(o.id)}>Cancelar</button>
                 </td>
               </tr>
             ))}

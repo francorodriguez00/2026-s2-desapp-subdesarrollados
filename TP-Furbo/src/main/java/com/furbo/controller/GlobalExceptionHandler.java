@@ -22,6 +22,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handle(InvalidFilterException e) {
         return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handle(IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handle(IllegalStateException e) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
+    }
     
     @ExceptionHandler(java.util.NoSuchElementException.class)
     public ResponseEntity<String> handle(java.util.NoSuchElementException e) {

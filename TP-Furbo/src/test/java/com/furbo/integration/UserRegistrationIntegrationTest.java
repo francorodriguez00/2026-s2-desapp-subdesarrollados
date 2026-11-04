@@ -25,6 +25,7 @@ public class UserRegistrationIntegrationTest extends BaseIntegrationTest{
         RegisterRequestDTO dto = new RegisterRequestDTO();
         dto.setEmail("test@furbo.com");
         dto.setPassword("password123");
+        dto.setName("Test User");
 
         ResponseEntity<Void> response = restTemplate.postForEntity("/auth/register", dto, Void.class);
 

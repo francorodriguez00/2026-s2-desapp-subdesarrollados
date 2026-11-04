@@ -52,6 +52,7 @@ public class AuthControllerTest {
             RegisterRequestDTO dto = new RegisterRequestDTO();
             dto.setEmail("test@furbo.com");
             dto.setPassword("pass");
+            dto.setName("Test User");
 
             mockMvc.perform(post("/auth/register")
                     .contentType(MediaType.APPLICATION_JSON)
@@ -68,7 +69,7 @@ public class AuthControllerTest {
             dto.setEmail("test@furbo.com");
             dto.setPassword("pass");
 
-            when(authService.login(any())).thenReturn("token-123");
+            when(authService.login(any())).thenReturn(new com.furbo.adapter.dto.LoginResponseDTO("token-123", "Test User", "test@furbo.com"));
 
             mockMvc.perform(post("/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)

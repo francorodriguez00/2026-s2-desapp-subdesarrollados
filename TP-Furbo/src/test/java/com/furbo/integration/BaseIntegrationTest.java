@@ -34,6 +34,7 @@ public abstract class BaseIntegrationTest {
         RegisterRequestDTO dto = new RegisterRequestDTO();
         dto.setEmail(email);
         dto.setPassword(PASSWORD);
+        dto.setName("User Test");
         assertThat(rest.postForEntity("/auth/register", dto, Void.class)
                 .getStatusCode().is2xxSuccessful()).isTrue();
         return email;
