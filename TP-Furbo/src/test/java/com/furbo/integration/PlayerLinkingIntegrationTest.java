@@ -235,7 +235,7 @@ class PlayerLinkingIntegrationTest {
 
     @Test
     void test6_comparatorUnit() {
-        MatchContext ctx = new MatchContext(new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>());
+        MatchContext ctx = new MatchContext(new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashSet<>());
         java.util.Map.Entry<String, List<java.util.Map<String, Object>>> e1 = new java.util.AbstractMap.SimpleEntry<>("1", List.of(java.util.Map.of("minsPlayed", 100)));
         java.util.Map.Entry<String, List<java.util.Map<String, Object>>> e2 = new java.util.AbstractMap.SimpleEntry<>("2", List.of(java.util.Map.of("minsPlayed", 200)));
         int res = WhoscoredGroupComparator.compareEntries(e1, e2, ctx, null);

@@ -20,22 +20,33 @@ public class PlayerLinkResolver {
     }
 
     public LinkOutcome resolve(String wsId, WhoScoredPlayerRef ref, Long existingInStats, MatchContext ctx) {
+        return resolve(wsId, ref, existingInStats, ctx, true);
+    }
+
+    public LinkOutcome resolve(String wsId, WhoScoredPlayerRef ref, Long existingInStats, MatchContext ctx, boolean allowFuzzy) {
         Optional<PlayerSourceId> existingLink = persister.findExisting("WHOSCORED", wsId);
         if (existingLink.isPresent()) {
+            persister.deleteReviews("WHOSCORED", wsId);
             return LinkOutcome.builder().playerId(existingLink.get().getPlayerId()).outcome(LinkOutcome.Type.ALREADY_LINKED).build();
         }
 
         if (existingInStats != null) {
-            LinkResult res = persister.link(wsId, existingInStats, "LEGACY_EXACT_NAME", 0.90);
+            LinkResult res = persister.link(wsId, existingInStats, "LEGACY_EXACT_NAME", 0.90, false);
             if (res == LinkResult.CONFLICT) {
                 return LinkOutcome.builder().outcome(LinkOutcome.Type.CONFLICT).disputedPlayerId(existingInStats).build();
             }
+            persister.deleteReviews("WHOSCORED", wsId);
             return LinkOutcome.builder().playerId(existingInStats).outcome(LinkOutcome.Type.LEGACY_CREATED).build();
         }
 
-        MatchOutcome outcome = matcherService.match(ref, ctx);
+        MatchOutcome outcome = matcherService.matchExact(ref, ctx);
+        if (outcome instanceof MatchOutcome.Unmatched && allowFuzzy) {
+            outcome = matcherService.matchFuzzy(ref, ctx);
+        }
+
         if (outcome instanceof MatchOutcome.Linked linked) {
-            LinkResult res = persister.link(wsId, linked.playerId(), linked.method(), linked.confidence());
+            boolean needsReview = "FUZZY_TEAM".equals(linked.method());
+            LinkResult res = persister.link(wsId, linked.playerId(), linked.method(), linked.confidence(), needsReview);
             if (res == LinkResult.CONFLICT) {
                  return LinkOutcome.builder().outcome(LinkOutcome.Type.CONFLICT).disputedPlayerId(linked.playerId()).build();
             }
@@ -44,11 +55,14 @@ public class PlayerLinkResolver {
                 case "EXACT_NAME_TEAM" -> LinkOutcome.Type.EXACT_TEAM;
                 default -> LinkOutcome.Type.FUZZY_TEAM;
             };
+            persister.deleteReviews("WHOSCORED", wsId);
             return LinkOutcome.builder().playerId(linked.playerId()).outcome(type).method(linked.method()).confidence(linked.confidence()).build();
-        } else if (outcome instanceof MatchOutcome.Review) {
+        } else if (outcome instanceof MatchOutcome.Review review) {
+            persister.saveReviews("WHOSCORED", wsId, review.candidates());
             return LinkOutcome.builder().outcome(LinkOutcome.Type.REVIEW).build();
         }
 
+        persister.deleteReviews("WHOSCORED", wsId);
         return LinkOutcome.builder().outcome(LinkOutcome.Type.UNMATCHED).build();
     }
 

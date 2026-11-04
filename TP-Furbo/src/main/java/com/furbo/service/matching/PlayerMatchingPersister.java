@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -39,6 +40,11 @@ public class PlayerMatchingPersister {
 
     @Transactional
     public LinkResult link(String externalId, Long playerId, String method, double confidence) {
+        return link(externalId, playerId, method, confidence, false);
+    }
+
+    @Transactional
+    public LinkResult link(String externalId, Long playerId, String method, double confidence, boolean needsReview) {
         Optional<PlayerSourceId> byExternalId = sourceRepository.findBySourceAndExternalId("WHOSCORED", externalId);
         if (byExternalId.isPresent()) {
             return LinkResult.ALREADY_LINKED;
@@ -56,10 +62,43 @@ public class PlayerMatchingPersister {
             .playerId(playerId)
             .matchMethod(method)
             .confidence(java.math.BigDecimal.valueOf(confidence).setScale(3, java.math.RoundingMode.HALF_UP))
-            .needsReview(false)
+            .needsReview(needsReview)
             .createdAt(LocalDateTime.now())
             .build();
         sourceRepository.save(link);
         return LinkResult.CREATED;
+    }
+
+    @Transactional
+    public void saveReviews(String source, String externalId, List<MatchOutcome.Review.Candidate> candidates) {
+        List<Long> candidateIds = new java.util.ArrayList<>();
+        for (MatchOutcome.Review.Candidate c : candidates) {
+            candidateIds.add(c.playerId());
+            Optional<PlayerMatchReview> existing = reviewRepository.findBySourceAndExternalIdAndCandidatePlayerId(source, externalId, c.playerId());
+            if (existing.isPresent()) {
+                PlayerMatchReview rev = existing.get();
+                rev.setScore(c.score());
+                rev.setReason(c.reason());
+                reviewRepository.save(rev);
+            } else {
+                PlayerMatchReview rev = PlayerMatchReview.builder()
+                    .source(source)
+                    .externalId(externalId)
+                    .candidatePlayerId(c.playerId())
+                    .score(c.score())
+                    .reason(c.reason())
+                    .createdAt(LocalDateTime.now())
+                    .build();
+                reviewRepository.save(rev);
+            }
+        }
+        if (!candidateIds.isEmpty()) {
+            reviewRepository.deleteBySourceAndExternalIdAndCandidatePlayerIdNotIn(source, externalId, candidateIds);
+        }
+    }
+
+    @Transactional
+    public void deleteReviews(String source, String externalId) {
+        reviewRepository.deleteBySourceAndExternalId(source, externalId);
     }
 }

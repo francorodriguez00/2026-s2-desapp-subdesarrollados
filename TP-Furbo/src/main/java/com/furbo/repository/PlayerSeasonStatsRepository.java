@@ -31,6 +31,9 @@ public interface PlayerSeasonStatsRepository extends JpaRepository<PlayerSeasonS
     @Query("SELECT COUNT(DISTINCT s.whoscoredPlayerId) FROM PlayerSeasonStats s WHERE s.whoscoredPlayerId NOT IN (SELECT DISTINCT s2.whoscoredPlayerId FROM PlayerSeasonStats s2 WHERE s2.playerId IS NOT NULL AND s2.whoscoredPlayerId IS NOT NULL)")
     long countUnlinkedWhoscoredPlayerIds();
 
+    @Query(value = "SELECT st.tournament_id, p.league, COUNT(DISTINCT st.whoscored_player_id) FROM player_season_stats st JOIN player_source_id s ON s.external_id = CAST(st.whoscored_player_id AS VARCHAR) JOIN players p ON p.id = s.player_id WHERE s.source = 'WHOSCORED' GROUP BY st.tournament_id, p.league", nativeQuery = true)
+    List<Object[]> findTournamentLeagueVotesNative();
+
     List<PlayerSeasonStats> findByWhoscoredPlayerIdIn(Collection<Long> whoscoredPlayerIds);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
