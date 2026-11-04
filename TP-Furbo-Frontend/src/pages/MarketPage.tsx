@@ -27,7 +27,6 @@ export default function MarketPage() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  // Cálculo estimado de costos
   const currentEffectivePrice = orderType === 'LIMIT' && limitPrice !== '' ? Number(limitPrice) : (price || 0);
   const subtotal = currentEffectivePrice * quantity;
   const commission = subtotal * 0.005;
@@ -188,23 +187,25 @@ export default function MarketPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div style={{ border: '1px solid #ccc', padding: '10px' }}>
                   <h4 style={{ color: 'green' }}>Compra</h4>
-                  <table style={{ width: '100%', fontSize: '14px' }}>
-                    <thead><tr><th>Cant</th><th>Precio</th></tr></thead>
+                  <table style={{ width: '100%', fontSize: '14px', textAlign: 'center' }}>
+                    <thead><tr><th>Precio</th><th>Cant</th></tr></thead>
                     <tbody>
                       {orderBook.buyLevels.map((lvl, idx) => (
-                        <tr key={idx}><td>{lvl.totalQuantity}</td><td>${lvl.price.toFixed(2)}</td></tr>
+                        <tr key={idx}><td>${lvl.price.toFixed(2)}</td><td>{lvl.totalQuantity}</td></tr>
                       ))}
+                      {orderBook.buyLevels.length === 0 && <tr><td colSpan={2}>Sin ofertas</td></tr>}
                     </tbody>
                   </table>
                 </div>
                 <div style={{ border: '1px solid #ccc', padding: '10px' }}>
                   <h4 style={{ color: 'red' }}>Venta</h4>
-                  <table style={{ width: '100%', fontSize: '14px' }}>
+                  <table style={{ width: '100%', fontSize: '14px', textAlign: 'center' }}>
                     <thead><tr><th>Precio</th><th>Cant</th></tr></thead>
                     <tbody>
                       {orderBook.sellLevels.map((lvl, idx) => (
                         <tr key={idx}><td>${lvl.price.toFixed(2)}</td><td>{lvl.totalQuantity}</td></tr>
                       ))}
+                      {orderBook.sellLevels.length === 0 && <tr><td colSpan={2}>Sin ofertas</td></tr>}
                     </tbody>
                   </table>
                 </div>
