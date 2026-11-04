@@ -7,7 +7,6 @@ export default function TransactionsPage() {
   const [type, setType] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [sort, setSort] = useState('DESC');
-  const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     getTransactions({ type, playerName, sort }).then(setTransactions).catch(console.error);
@@ -43,7 +42,7 @@ export default function TransactionsPage() {
         </thead>
         <tbody>
           {transactions.map(t => {
-            const isDeposito = t.type === 'DEPÓSITO';
+            const isDeposito = t.type === ('DEPÓSITO' as any);
             return (
             <tr key={t.operationId} style={{ borderBottom: '1px solid #eee' }}>
               <td style={{ padding: '8px' }}>{isDeposito ? '-' : t.playerName}</td>

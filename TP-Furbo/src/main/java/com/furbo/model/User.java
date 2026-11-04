@@ -24,6 +24,9 @@ public class User {
     @Column(nullable = false, precision = 19, scale = 2)
     private java.math.BigDecimal balance = java.math.BigDecimal.valueOf(100);
 
+    @Column(nullable = false, precision = 19, scale = 2)
+    private java.math.BigDecimal reservedBalance = java.math.BigDecimal.ZERO;
+
     @Column(nullable = false)
     private Boolean isSuperuser = false;
 }

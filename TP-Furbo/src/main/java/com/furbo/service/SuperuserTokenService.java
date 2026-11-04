@@ -5,6 +5,8 @@ import com.furbo.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,16 +18,18 @@ public class SuperuserTokenService {
     private final PortfolioRepository portfolioRepository;
     private final PosicionPorJugadorRepository posicionRepository;
     private final PlayerRepository playerRepository;
-    private final SellOfferRepository sellOfferRepository;
+    private final OrderRepository orderRepository;
+    private final PriceProvider priceProvider;
 
     public SuperuserTokenService(UserRepository userRepository, PortfolioRepository portfolioRepository,
                                  PosicionPorJugadorRepository posicionRepository, PlayerRepository playerRepository,
-                                 SellOfferRepository sellOfferRepository) {
+                                 OrderRepository orderRepository, PriceProvider priceProvider) {
         this.userRepository = userRepository;
         this.portfolioRepository = portfolioRepository;
         this.posicionRepository = posicionRepository;
         this.playerRepository = playerRepository;
-        this.sellOfferRepository = sellOfferRepository;
+        this.orderRepository = orderRepository;
+        this.priceProvider = priceProvider;
     }
 
     @Transactional
@@ -44,48 +48,36 @@ public class SuperuserTokenService {
     @Transactional
     public void asignarTokens(Player jugador) {
         Portfolio portfolio = asegurarPortfolioSuperuser();
-        // Verificamos si ya existe una posición para evitar duplicados y no sobrescribir nada
+        User superuser = portfolio.getUser();
+
         if (posicionRepository.findByPortfolioIdAndPlayerId(portfolio.getId(), jugador.getId()).isEmpty()) {
             PosicionPorJugador posicion = new PosicionPorJugador();
             posicion.setPortfolio(portfolio);
             posicion.setPlayerId(jugador.getId());
             posicion.setCantidad(100);
+            posicion.setReservedQuantity(100);
             posicionRepository.save(posicion);
 
-            SellOffer offer = new SellOffer();
-            offer.setSellerId(portfolio.getUser().getId());
-            offer.setPlayerId(jugador.getId());
-            offer.setQuantityTotal(100);
-            offer.setQuantityRemaining(100);
-            offer.setStatus(SellOffer.OfferStatus.OPEN);
-            sellOfferRepository.save(offer);
+            BigDecimal currentPrice = priceProvider.getCurrentPrice(jugador.getId());
+            Order order = new Order();
+            order.setUserId(superuser.getId());
+            order.setPlayerId(jugador.getId());
+            order.setSide(Order.OrderSide.SELL);
+            order.setType(Order.OrderType.LIMIT);
+            order.setStatus(Order.OrderStatus.OPEN);
+            order.setPrice(currentPrice);
+            order.setQuantityOriginal(100);
+            order.setQuantityRemaining(100);
+            order.setCreatedAt(LocalDateTime.now());
+            orderRepository.save(order);
         }
-        // Si ya existe, no hacemos nada, preservando el estado actual (cantidades vendidas, etc.)
     }
 
     @Transactional
     public void sincronizarTodos() {
-        Portfolio portfolio = asegurarPortfolioSuperuser();
         List<Player> todosLosJugadores = playerRepository.findAll();
-        
-        Set<Long> jugadorIdsConPosicion = posicionRepository.findAll().stream()
-                .filter(p -> p.getPortfolio().getId().equals(portfolio.getId()))
-                .map(PosicionPorJugador::getPlayerId)
-                .collect(Collectors.toSet());
-
-        List<PosicionPorJugador> nuevas = todosLosJugadores.stream()
-                .filter(j -> !jugadorIdsConPosicion.contains(j.getId()))
-                .map(j -> {
-                    PosicionPorJugador p = new PosicionPorJugador();
-                    p.setPortfolio(portfolio);
-                    p.setPlayerId(j.getId());
-                    p.setCantidad(100);
-                    return p;
-                })
-                .collect(Collectors.toList());
-
-        if (!nuevas.isEmpty()) {
-            posicionRepository.saveAll(nuevas);
+        for (Player j : todosLosJugadores) {
+            asignarTokens(j);
         }
     }
 }

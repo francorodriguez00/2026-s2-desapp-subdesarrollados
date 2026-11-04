@@ -18,6 +18,10 @@ import java.util.List;
 public interface PlayerRepository extends JpaRepository<Player, Long>, JpaSpecificationExecutor<Player> {
     List<Player> findByExternalIdIn(Collection<Long> externalIds);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Player p WHERE p.id = :id")
+    java.util.Optional<Player> findByIdWithLock(@Param("id") Long id);
+
 
     @Query(value = "SELECT new com.furbo.adapter.dto.PlayerCatalogDTO(p.id, p.name, p.position, p.team, p.league, " +
                    "(SELECT q.price FROM PlayerQuote q WHERE q.playerId = p.id AND q.calculatedAt <= :date ORDER BY q.calculatedAt DESC, q.id DESC LIMIT 1)) " +

@@ -1,6 +1,7 @@
 package com.furbo.controller;
 
 import com.furbo.service.PriceProvider;
+import com.furbo.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,14 +29,30 @@ import java.util.stream.Collectors;
 public class MarketController {
 
     @Autowired private PriceProvider priceProvider;
+    @Autowired private OrderService orderService;
     @Autowired private SellOfferRepository sellOfferRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private PlayerRepository playerRepository;
     @Autowired private PosicionPorJugadorRepository posicionRepository;
+    @Autowired private com.furbo.repository.PortfolioRepository portfolioRepository;
 
     @GetMapping("/price/{playerId}")
     public BigDecimal getPlayerPrice(@PathVariable Long playerId) {
         return priceProvider.getCurrentPrice(playerId);
+    }
+
+    @GetMapping("/book/{playerId}")
+    public ResponseEntity<?> getBook(@PathVariable Long playerId) {
+        return ResponseEntity.ok(orderService.getOrderBook(playerId));
+    }
+
+    @GetMapping("/last-trade/{playerId}")
+    public ResponseEntity<?> getLastTrade(@PathVariable Long playerId) {
+        BigDecimal lastTrade = orderService.getLastTrade(playerId);
+        if (lastTrade == null) {
+            lastTrade = priceProvider.getCurrentPrice(playerId);
+        }
+        return ResponseEntity.ok(lastTrade);
     }
 
     @GetMapping("/my-offers")
@@ -51,8 +68,6 @@ public class MarketController {
                         so.getCreatedAt()
                 )).collect(Collectors.toList());
     }
-
-    @Autowired private com.furbo.repository.PortfolioRepository portfolioRepository;
 
     @DeleteMapping("/offers/{offerId}")
     @org.springframework.transaction.annotation.Transactional
