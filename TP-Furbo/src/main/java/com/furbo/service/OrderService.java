@@ -17,6 +17,7 @@ public class OrderService {
 
     @Autowired private OrderRepository orderRepository;
     @Autowired private TradeRepository tradeRepository;
+    @Autowired private TransactionRepository transactionRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private PortfolioRepository portfolioRepository;
     @Autowired private PosicionPorJugadorRepository posicionRepository;
@@ -104,7 +105,6 @@ public class OrderService {
             throw new IllegalStateException("Stock insuficiente");
         }
 
-        // If market sell order remaining, it stays open in book as limit at current price
         return new OrderResultDTO(order, trades);
     }
 
@@ -363,6 +363,17 @@ public class OrderService {
             sellerOrderId = sellOrder.getId();
         }
 
+        String operationId = UUID.randomUUID().toString();
+        Transaction tx = new Transaction();
+        tx.setBuyerId(buyerId);
+        tx.setSellerId(sellerId);
+        tx.setPlayerId(buyerOrder.getPlayerId());
+        tx.setQuantity(quantity);
+        tx.setUnitPrice(executionPrice);
+        tx.setCommission(buyerCommission);
+        tx.setOperationId(operationId);
+        transactionRepository.save(tx);
+
         Trade trade = new Trade();
         trade.setBuyerOrderId(buyerOrder.getId());
         trade.setSellerOrderId(sellerOrderId != null ? sellerOrderId : 0L);
@@ -427,6 +438,17 @@ public class OrderService {
         sellerPos.setCantidad(sellerPos.getCantidad() - quantity);
         sellerPos.setReservedQuantity(sellerPos.getReservedQuantity() - quantity);
         posicionRepository.save(sellerPos);
+
+        String operationId = UUID.randomUUID().toString();
+        Transaction tx = new Transaction();
+        tx.setBuyerId(buyerId);
+        tx.setSellerId(sellerId);
+        tx.setPlayerId(sellOrder.getPlayerId());
+        tx.setQuantity(quantity);
+        tx.setUnitPrice(executionPrice);
+        tx.setCommission(buyerCommission);
+        tx.setOperationId(operationId);
+        transactionRepository.save(tx);
 
         Trade trade = new Trade();
         trade.setBuyerOrderId(buyerOrder.getId());

@@ -17,6 +17,7 @@ public class TransactionHistoryDTO {
     private String playerName;
     private Integer totalQuantity;
     private BigDecimal totalAmount;
+    private BigDecimal totalCommission;
     private LocalDateTime createdAt;
     private String type; // "COMPRA" o "VENTA"
     private List<TransactionDetailDTO> details;
@@ -27,5 +28,6 @@ public class TransactionHistoryDTO {
     public static class TransactionDetailDTO {
         private Integer quantity;
         private BigDecimal unitPrice;
+        private BigDecimal commission;
     }
 }

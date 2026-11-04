@@ -36,6 +36,7 @@ export default function TransactionsPage() {
             <th style={{ padding: '8px' }}>Tipo</th>
             <th style={{ padding: '8px' }}>Cantidad</th>
             <th style={{ padding: '8px' }}>Precio Unit.</th>
+            <th style={{ padding: '8px' }}>Comisión</th>
             <th style={{ padding: '8px' }}>Total</th>
             <th style={{ padding: '8px' }}>Fecha</th>
           </tr>
@@ -49,6 +50,7 @@ export default function TransactionsPage() {
               <td style={{ padding: '8px' }}>{t.type}</td>
               <td style={{ padding: '8px' }}>{isDeposito ? '-' : t.totalQuantity}</td>
               <td style={{ padding: '8px' }}>{isDeposito ? '-' : `${t.details[0]?.unitPrice} cr.`}</td>
+              <td style={{ padding: '8px' }}>{t.totalCommission} cr.</td>
               <td style={{ padding: '8px' }}>{t.totalAmount} cr.</td>
               <td style={{ padding: '8px' }}>{new Date(t.createdAt).toLocaleString()}</td>
             </tr>

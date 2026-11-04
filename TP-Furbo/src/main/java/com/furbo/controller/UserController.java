@@ -124,7 +124,7 @@ public class UserController {
             String opType = first.getPlayerId() == 0L ? "DEPÓSITO" : (isBuy ? "COMPRA" : "VENTA");
             
             List<TransactionHistoryDTO.TransactionDetailDTO> details = txs.stream()
-                    .map(t -> new TransactionHistoryDTO.TransactionDetailDTO(t.getQuantity(), t.getUnitPrice()))
+                    .map(t -> new TransactionHistoryDTO.TransactionDetailDTO(t.getQuantity(), t.getUnitPrice(), t.getCommission()))
                     .collect(Collectors.toList());
 
             BigDecimal totalQty = BigDecimal.valueOf(txs.stream().mapToInt(Transaction::getQuantity).sum());
@@ -133,8 +133,10 @@ public class UserController {
                 return t.getUnitPrice().multiply(BigDecimal.valueOf(t.getQuantity()));
             }).reduce(BigDecimal.ZERO, BigDecimal::add);
 
+            BigDecimal totalCommission = txs.stream().map(Transaction::getCommission).reduce(BigDecimal.ZERO, BigDecimal::add);
+
             return new TransactionHistoryDTO(
-                    entry.getKey(), pName, totalQty.intValue(), totalAmt, first.getCreatedAt(),
+                    entry.getKey(), pName, totalQty.intValue(), totalAmt, totalCommission, first.getCreatedAt(),
                     opType, details
             );
         }).collect(Collectors.toList());

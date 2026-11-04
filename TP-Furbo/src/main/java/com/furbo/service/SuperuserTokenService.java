@@ -67,7 +67,7 @@ public class SuperuserTokenService {
             order.setUserId(superuser.getId());
             order.setPlayerId(jugador.getId());
             order.setSide(Order.OrderSide.SELL);
-            order.setType(Order.OrderType.LIMIT);
+            order.setType(Order.OrderType.MARKET);
             order.setStatus(Order.OrderStatus.OPEN);
             order.setPrice(currentPrice);
             order.setQuantityOriginal(100);
