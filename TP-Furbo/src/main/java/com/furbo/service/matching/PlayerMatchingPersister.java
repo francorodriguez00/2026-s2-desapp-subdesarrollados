@@ -29,8 +29,12 @@ public class PlayerMatchingPersister {
         this.statsRepository = statsRepository;
     }
 
-    public Optional<PlayerSourceId> findExisting(String externalId) {
-        return sourceRepository.findBySourceAndExternalId("WHOSCORED", externalId);
+    public Optional<PlayerSourceId> findExisting(String source, String externalId) {
+        return sourceRepository.findBySourceAndExternalId(source, externalId);
+    }
+
+    public Optional<PlayerSourceId> findExistingByPlayerId(Long playerId) {
+        return sourceRepository.findByPlayerIdAndSource(playerId, "WHOSCORED");
     }
 
     @Transactional

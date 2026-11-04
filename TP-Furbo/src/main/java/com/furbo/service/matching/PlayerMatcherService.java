@@ -23,8 +23,10 @@ public class PlayerMatcherService {
             .collect(Collectors.groupingBy(p -> NameNormalizer.normalizeName(p.getName())));
         Map<String, List<Player>> byTeam = allPlayers.stream()
             .collect(Collectors.groupingBy(p -> NameNormalizer.normalizeTeam(p.getTeam())));
+        Map<Long, Player> byId = allPlayers.stream()
+            .collect(Collectors.toMap(Player::getId, p -> p, (p1, p2) -> p1));
         
-        return new MatchContext(byName, byTeam, new HashMap<>(), new HashMap<>());
+        return new MatchContext(byName, byTeam, byId, new HashMap<>(), new HashMap<>());
     }
 
     public MatchOutcome match(WhoScoredPlayerRef ref, MatchContext ctx) {

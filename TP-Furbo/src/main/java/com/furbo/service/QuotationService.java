@@ -45,7 +45,7 @@ public class QuotationService {
             }
             Optional<PlayerQuote> last = quoteRepository.findFirstByPlayerIdOrderByCalculatedAtDescIdDesc(s.playerId());
             if (last.isPresent() && last.get().getStrategyConfigId().equals(activeCfg.getId()) 
-                && last.get().getStatsUpdatedAt().equals(s.updatedAt())) {
+                && Objects.equals(last.get().getStatsUpdatedAt(), s.updatedAt())) {
                 skippedCount++;
                 continue;
             }

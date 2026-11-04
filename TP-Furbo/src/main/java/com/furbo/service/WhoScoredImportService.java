@@ -55,20 +55,21 @@ public class WhoScoredImportService {
             groupedByWsId.computeIfAbsent(wsId, k -> new ArrayList<>()).add(entry.getValue());
         }
 
-        // TODO: Adaptar matcherService.buildContext() si es necesario
-        MatchContext ctx = new MatchContext(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>());
+        MatchContext ctx = matcherService.buildContext();
         int newFiles = 0, updated = 0, unchanged = 0;
         Map<LinkOutcome.Type, Integer> outcomes = new EnumMap<>(LinkOutcome.Type.class);
         List<PlayerSeasonStats> toSave = new ArrayList<>();
         List<ConflictInfo> conflictsList = new ArrayList<>();
 
-        for (Map.Entry<String, List<Map<String, Object>>> entry : groupedByWsId.entrySet()) {
+        List<Map.Entry<String, List<Map<String, Object>>>> sortedEntries = new ArrayList<>(groupedByWsId.entrySet());
+        sortedEntries.sort((e1, e2) -> WhoscoredGroupComparator.compareEntries(e1, e2, ctx));
+
+        for (Map.Entry<String, List<Map<String, Object>>> entry : sortedEntries) {
             String wsId = entry.getKey();
             List<Map<String, Object>> rows = entry.getValue();
 
             WhoScoredPlayerRef ref = buildRef(wsId, rows);
             
-            // existingInStats: mirar TODAS las filas de ese wsId para ver si ya hay playerId
             Long existingInStats = rows.stream()
                 .map(r -> statsMap.get(buildKey(r)))
                 .filter(Objects::nonNull)
@@ -80,7 +81,15 @@ public class WhoScoredImportService {
             outcomes.put(outcome.getOutcome(), outcomes.getOrDefault(outcome.getOutcome(), 0) + 1);
             
             if (outcome.getOutcome() == LinkOutcome.Type.CONFLICT) {
-                conflictsList.add(new ConflictInfo(wsId, ref.name(), ref.teamNames().get(0), outcome.getDisputedPlayerId()));
+                String ownerExternalId = "";
+                var existingSource = linkResolver.tryFindExistingByPlayerId(outcome.getDisputedPlayerId());
+                if (existingSource.isPresent()) {
+                    ownerExternalId = existingSource.get().getExternalId();
+                }
+                conflictsList.add(new ConflictInfo(wsId, ref.name(), ref.teamNames().get(0), rows.stream().mapToInt(r -> getInteger(r, "minsPlayed")).sum(), outcome.getDisputedPlayerId(), ownerExternalId));
+                repository.clearPlayerIdForWhoscoredId(Long.valueOf(wsId));
+            } else if (outcome.getPlayerId() != null) {
+                repository.setPlayerIdForWhoscoredId(Long.valueOf(wsId), outcome.getPlayerId());
             }
 
             for (Map<String, Object> row : rows) {
@@ -129,8 +138,14 @@ public class WhoScoredImportService {
             .limit(30)
             .toList();
         
-        log.info("Jugadores sin vincular: {}", unmatched);
-        log.info("Conflictos: {}", conflictsList);
+        log.info("Jugadores sin vincular totales: {}", unmatched.size());
+        for (UnmatchedPlayerDTO u : unmatched) {
+            log.info("Sin vincular -> {}", u);
+        }
+        log.info("Conflictos totales: {}", conflictsList.size());
+        for (ConflictInfo c : conflictsList) {
+            log.info("Conflicto -> {}", c);
+        }
     }
 
     private String buildKey(Map<String, Object> row) {
@@ -351,7 +366,7 @@ public class WhoScoredImportService {
         return val instanceof Number ? ((Number) val).doubleValue() : 0.0;
     }
 
-    private record ConflictInfo(String wsId, String name, String team, Long disputedPlayerId) {}
+    private record ConflictInfo(String wsId, String name, String team, int minutes, Long disputedPlayerId, String ownerExternalId) {}
 
     private WhoScoredPlayerRef buildRef(String wsId, List<Map<String, Object>> rows) {
         Map<String, Object> bestRow = rows.stream()

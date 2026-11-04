@@ -20,7 +20,7 @@ public class PlayerLinkResolver {
     }
 
     public LinkOutcome resolve(String wsId, WhoScoredPlayerRef ref, Long existingInStats, MatchContext ctx) {
-        Optional<PlayerSourceId> existingLink = persister.findExisting(wsId);
+        Optional<PlayerSourceId> existingLink = persister.findExisting("WHOSCORED", wsId);
         if (existingLink.isPresent()) {
             return LinkOutcome.builder().playerId(existingLink.get().getPlayerId()).outcome(LinkOutcome.Type.ALREADY_LINKED).build();
         }
@@ -52,7 +52,7 @@ public class PlayerLinkResolver {
         return LinkOutcome.builder().outcome(LinkOutcome.Type.UNMATCHED).build();
     }
 
-    public LinkResult tryLink(String wsId, Long playerId, String method, double confidence) {
-        return persister.link(wsId, playerId, method, confidence);
+    public Optional<PlayerSourceId> tryFindExistingByPlayerId(Long playerId) {
+        return persister.findExistingByPlayerId(playerId);
     }
 }

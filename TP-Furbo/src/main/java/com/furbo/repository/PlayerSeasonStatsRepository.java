@@ -18,6 +18,14 @@ public interface PlayerSeasonStatsRepository extends JpaRepository<PlayerSeasonS
 
     List<PlayerSeasonStats> findByPlayerIdIsNotNull();
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE PlayerSeasonStats s SET s.playerId = :playerId WHERE s.whoscoredPlayerId = :whoscoredId")
+    void setPlayerIdForWhoscoredId(@Param("whoscoredId") Long whoscoredId, @Param("playerId") Long playerId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE PlayerSeasonStats s SET s.playerId = null WHERE s.whoscoredPlayerId = :whoscoredId")
+    void clearPlayerIdForWhoscoredId(@Param("whoscoredId") Long whoscoredId);
+
     @Modifying
     @Query("UPDATE PlayerSeasonStats s SET s.playerId = :playerId WHERE s.whoscoredPlayerId = :whoscoredId AND s.playerId IS NULL")
     void updatePlayerIdByWhoscoredId(@Param("playerId") Long playerId, @Param("whoscoredId") Long whoscoredId);
