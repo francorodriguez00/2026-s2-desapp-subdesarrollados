@@ -14,7 +14,7 @@ export default function TransactionsPage() {
 
   return (
     <div>
-      <h1>Movimientos y Operaciones</h1>
+      <h1>Movimientos</h1>
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <input placeholder="Jugador..." value={playerName} onChange={(e) => setPlayerName(e.target.value)} />
         <select value={type} onChange={(e) => setType(e.target.value)}>

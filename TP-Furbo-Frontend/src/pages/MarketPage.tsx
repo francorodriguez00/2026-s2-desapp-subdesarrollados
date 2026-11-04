@@ -106,7 +106,7 @@ export default function MarketPage() {
 
   return (
     <div style={{ padding: '20px' }}>
-      <h1>Mercado y Caja de Puntas</h1>
+      <h1>Mercado</h1>
       {message && <p style={{ color: message.type === 'error' ? 'var(--color-negative)' : 'var(--color-positive)' }}>{message.text}</p>}
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
@@ -170,13 +170,13 @@ export default function MarketPage() {
 
         {/* Caja de Puntas (Order Book) */}
         <div>
-          <h3>Caja de Puntas (Order Book)</h3>
+          <h3>Caja de Puntas</h3>
           {playerId ? (
             orderBook ? (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 {/* Lado Compra */}
                 <div style={{ border: '1px solid #ccc', padding: '10px' }}>
-                  <h4 style={{ color: 'green' }}>Compra (Bid)</h4>
+                  <h4 style={{ color: 'green' }}>Compra</h4>
                   <table style={{ width: '100%', fontSize: '14px' }}>
                     <thead>
                       <tr><th>Cant</th><th>Precio</th></tr>
@@ -192,7 +192,7 @@ export default function MarketPage() {
 
                 {/* Lado Venta */}
                 <div style={{ border: '1px solid #ccc', padding: '10px' }}>
-                  <h4 style={{ color: 'red' }}>Venta (Ask)</h4>
+                  <h4 style={{ color: 'red' }}>Venta</h4>
                   <table style={{ width: '100%', fontSize: '14px' }}>
                     <thead>
                       <tr><th>Precio</th><th>Cant</th></tr>
