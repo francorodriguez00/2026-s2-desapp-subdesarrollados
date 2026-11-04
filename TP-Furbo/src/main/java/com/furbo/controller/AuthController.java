@@ -33,8 +33,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequestDTO loginRequest) {
         try {
-            String token = authService.login(loginRequest);
-            return ResponseEntity.ok(new LoginResponseDTO(token));
+            LoginResponseDTO response = authService.login(loginRequest);
+            return ResponseEntity.ok(response);
         } catch (InvalidCredentialsException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }

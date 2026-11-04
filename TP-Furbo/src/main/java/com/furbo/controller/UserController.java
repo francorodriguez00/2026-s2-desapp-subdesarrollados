@@ -71,7 +71,7 @@ public class UserController {
             totalInvertido = totalInvertido.add(pos.getValorTotal());
         }
 
-        return new PortfolioResponseDTO(posDTOs, user.getBalance(), totalInvertido);
+        return new PortfolioResponseDTO(posDTOs, user.getBalance(), totalInvertido, user.getName());
     }
 
     @PostMapping("/credits/deposit")

@@ -14,6 +14,7 @@ export interface Portfolio {
   posiciones: Position[];
   saldoDisponible: number;
   totalInvertido: number;
+  userName?: string;
 }
 
 export const getPortfolio = async () => {

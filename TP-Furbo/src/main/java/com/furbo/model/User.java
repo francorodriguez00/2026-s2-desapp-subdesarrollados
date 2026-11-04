@@ -21,6 +21,9 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Column(nullable = false)
+    private String name;
+
     @Column(nullable = false, precision = 19, scale = 2)
     private java.math.BigDecimal balance = java.math.BigDecimal.valueOf(100);
 

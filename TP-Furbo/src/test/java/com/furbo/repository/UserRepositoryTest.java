@@ -25,6 +25,7 @@ public class UserRepositoryTest {
         User user = new User();
         user.setEmail("test@test.com");
         user.setPassword("password");
+        user.setName("Test");
         userRepository.save(user);
 
         Optional<User> found = userRepository.findByEmail("test@test.com");

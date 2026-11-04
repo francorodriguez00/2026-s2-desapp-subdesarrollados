@@ -15,15 +15,15 @@ const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const HomePage = () => {
-  const [data, setData] = useState<{ balance: number, totalInvertido: number } | null>(null);
+  const [data, setData] = useState<{ balance: number, totalInvertido: number, userName?: string } | null>(null);
   const [deposito, setDeposito] = useState<number>(0);
-  const [user, setUser] = useState<{ email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string } | null>(null);
 
   const loadData = async () => {
       try {
           const port = await getPortfolio();
-          setData({ balance: port.saldoDisponible, totalInvertido: port.totalInvertido });
-          setUser({ email: sessionStorage.getItem('email') || 'Usuario' });
+          setData({ balance: port.saldoDisponible, totalInvertido: port.totalInvertido, userName: port.userName });
+          setUser({ name: port.userName || sessionStorage.getItem('name') || sessionStorage.getItem('email') || 'Usuario' });
       } catch (e) {
           console.error(e);
       }
@@ -39,7 +39,7 @@ const HomePage = () => {
 
   return (
     <div style={{ padding: 'var(--space-md)' }}>
-      <h1>Bienvenido a FURBO, {user?.email}</h1>
+      <h1>Bienvenido a FURBO, {user?.name}</h1>
       <div className="card">
         <p>Créditos Disponibles: {data ? `${data.balance.toFixed(2)} créditos` : '...'}</p>
         <p>Créditos Invertidos: {data ? `${data.totalInvertido.toFixed(2)} créditos` : '...'}</p>

@@ -32,6 +32,7 @@ public class SeedConfig implements ApplicationRunner {
             User admin = new User();
             admin.setEmail("admin@furbo.com");
             admin.setPassword(passwordHasher.hash("admin123"));
+            admin.setName("Admin");
             admin.setBalance(BigDecimal.valueOf(1000));
             admin.setIsSuperuser(true);
             userRepository.save(admin);
