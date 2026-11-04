@@ -27,6 +27,12 @@ export default function MarketPage() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  // Cálculo estimado de costos
+  const currentEffectivePrice = orderType === 'LIMIT' && limitPrice !== '' ? Number(limitPrice) : (price || 0);
+  const subtotal = currentEffectivePrice * quantity;
+  const commission = subtotal * 0.005;
+  const total = orderSide === 'BUY' ? subtotal + commission : subtotal - commission;
+
   useEffect(() => {
     if (initialPlayerId) {
         getPlayerDetail(initialPlayerId).then(p => {
@@ -110,7 +116,6 @@ export default function MarketPage() {
       {message && <p style={{ color: message.type === 'error' ? 'var(--color-negative)' : 'var(--color-positive)' }}>{message.text}</p>}
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-        {/* Formulario */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <input 
               placeholder="Buscar jugador..." 
@@ -162,52 +167,50 @@ export default function MarketPage() {
 
             <input type="number" min="1" placeholder="Cantidad" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} />
             
+            {subtotal > 0 && (
+                <div style={{ padding: '10px', background: '#f0f0f0', borderRadius: '4px' }}>
+                    <p>Subtotal: ${subtotal.toFixed(2)}</p>
+                    <p>Comisión (0.5%): ${commission.toFixed(2)}</p>
+                    <strong>{orderSide === 'BUY' ? 'Total a pagar' : 'Total a recibir'}: ${total.toFixed(2)}</strong>
+                </div>
+            )}
+            
             <button type="submit" disabled={loading || !playerId}>
               {orderSide === 'BUY' ? 'Enviar Compra' : 'Enviar Venta'}
             </button>
           </form>
         </div>
 
-        {/* Caja de Puntas (Order Book) */}
         <div>
           <h3>Caja de Puntas</h3>
           {playerId ? (
             orderBook ? (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {/* Lado Compra */}
                 <div style={{ border: '1px solid #ccc', padding: '10px' }}>
                   <h4 style={{ color: 'green' }}>Compra</h4>
                   <table style={{ width: '100%', fontSize: '14px' }}>
-                    <thead>
-                      <tr><th>Cant</th><th>Precio</th></tr>
-                    </thead>
+                    <thead><tr><th>Cant</th><th>Precio</th></tr></thead>
                     <tbody>
                       {orderBook.buyLevels.map((lvl, idx) => (
-                        <tr key={idx}><td>{lvl.totalQuantity}</td><td>${lvl.price}</td></tr>
+                        <tr key={idx}><td>{lvl.totalQuantity}</td><td>${lvl.price.toFixed(2)}</td></tr>
                       ))}
-                      {orderBook.buyLevels.length === 0 && <tr><td colSpan={2}>Sin ofertas</td></tr>}
                     </tbody>
                   </table>
                 </div>
-
-                {/* Lado Venta */}
                 <div style={{ border: '1px solid #ccc', padding: '10px' }}>
                   <h4 style={{ color: 'red' }}>Venta</h4>
                   <table style={{ width: '100%', fontSize: '14px' }}>
-                    <thead>
-                      <tr><th>Precio</th><th>Cant</th></tr>
-                    </thead>
+                    <thead><tr><th>Precio</th><th>Cant</th></tr></thead>
                     <tbody>
                       {orderBook.sellLevels.map((lvl, idx) => (
-                        <tr key={idx}><td>${lvl.price}</td><td>{lvl.totalQuantity}</td></tr>
+                        <tr key={idx}><td>${lvl.price.toFixed(2)}</td><td>{lvl.totalQuantity}</td></tr>
                       ))}
-                      {orderBook.sellLevels.length === 0 && <tr><td colSpan={2}>Sin ofertas</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </div>
             ) : <p>Cargando libro...</p>
-          ) : <p>Seleccione un jugador para ver la caja de puntas</p>}
+          ) : <p>Seleccione un jugador</p>}
         </div>
       </div>
     </div>
