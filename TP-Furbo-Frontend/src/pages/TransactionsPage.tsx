@@ -50,8 +50,8 @@ export default function TransactionsPage() {
               <td style={{ padding: '8px' }}>{t.type}</td>
               <td style={{ padding: '8px' }}>{isDeposito ? '-' : t.totalQuantity}</td>
               <td style={{ padding: '8px' }}>{isDeposito ? '-' : `${t.details[0]?.unitPrice} cr.`}</td>
-              <td style={{ padding: '8px' }}>{t.totalCommission} cr.</td>
-              <td style={{ padding: '8px' }}>{t.totalAmount} cr.</td>
+              <td style={{ padding: '8px' }}>{isDeposito ? '-' : `${t.totalCommission.toFixed(2)} cr.`}</td>
+              <td style={{ padding: '8px' }}>{isDeposito ? `${t.totalAmount.toFixed(2)} cr.` : `${(t.totalAmount + t.totalCommission).toFixed(2)} cr.`}</td>
               <td style={{ padding: '8px' }}>{new Date(t.createdAt).toLocaleString()}</td>
             </tr>
             );
