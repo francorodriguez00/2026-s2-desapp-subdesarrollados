@@ -19,15 +19,23 @@ export default function Login() {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', maxWidth: '300px', margin: 'auto', gap: '8px' }}>
-      <h1>Login</h1>
-      {error && <p style={{ color: 'var(--color-negative)' }}>{error}</p>}
-      <input type="email" placeholder="Email" onChange={(e) => setEmail(e.target.value)} required />
-      <input type="password" placeholder="Password" onChange={(e) => setPassword(e.target.value)} required />
-      <button type="submit">Entrar</button>
-      <p style={{ marginTop: '16px', textAlign: 'center' }}>
-        ¿No tenés cuenta? <a href="/register">Registrate</a>
-      </p>
-    </form>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', padding: '16px' }}>
+      <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '400px', gap: '16px', padding: '32px' }}>
+        <h1 style={{ textAlign: 'center', margin: '0 0 8px 0', borderBottom: 'none' }}>Login</h1>
+        {error && <p style={{ color: 'var(--color-negative)', textAlign: 'center', margin: 0 }}>{error}</p>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label style={{ fontWeight: 500, fontSize: '14px' }}>Email</label>
+          <input className="input-field" type="email" placeholder="tu@email.com" style={{ padding: '12px 16px', fontSize: '15px', width: '100%', boxSizing: 'border-box' }} onChange={(e) => setEmail(e.target.value)} required />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <label style={{ fontWeight: 500, fontSize: '14px' }}>Contraseña</label>
+          <input className="input-field" type="password" placeholder="••••••••" style={{ padding: '12px 16px', fontSize: '15px', width: '100%', boxSizing: 'border-box' }} onChange={(e) => setPassword(e.target.value)} required />
+        </div>
+        <button type="submit" className="btn btn-primary" style={{ padding: '14px', fontSize: '16px', fontWeight: 600, marginTop: '8px', width: '100%' }}>Entrar</button>
+        <p style={{ marginTop: '12px', textAlign: 'center', fontSize: '14px' }}>
+          ¿No tenés cuenta? <a href="/register" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 500 }}>Registrate</a>
+        </p>
+      </form>
+    </div>
   );
 }
