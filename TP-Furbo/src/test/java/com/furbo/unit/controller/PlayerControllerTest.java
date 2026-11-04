@@ -4,7 +4,7 @@ import com.furbo.config.SecurityConfig;
 import com.furbo.controller.PlayerController;
 import com.furbo.security.JwtAuthenticationFilter;
 import com.furbo.security.JwtService;
-import com.furbo.service.PlayerService;
+import com.furbo.repository.PlayerRepository;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,13 +39,13 @@ public class PlayerControllerTest {
 
     @Autowired private MockMvc mockMvc;
 
-    @MockBean private PlayerService playerService;
+    @MockBean private PlayerRepository playerRepository;
 
     @Nested
     class GetPlayers {
         @Test
         void getPlayers_devuelve200() throws Exception {
-            when(playerService.getPlayers(anyString(), anyString(), anyString(), any(Pageable.class)))
+            when(playerRepository.findPlayersCatalog(anyString(), anyString(), anyString(), any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(Collections.emptyList()));
 
             mockMvc.perform(get("/players"))
