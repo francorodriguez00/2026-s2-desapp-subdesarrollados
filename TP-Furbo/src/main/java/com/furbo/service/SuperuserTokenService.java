@@ -8,8 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class SuperuserTokenService {
@@ -50,14 +48,20 @@ public class SuperuserTokenService {
         Portfolio portfolio = asegurarPortfolioSuperuser();
         User superuser = portfolio.getUser();
 
-        if (posicionRepository.findByPortfolioIdAndPlayerId(portfolio.getId(), jugador.getId()).isEmpty()) {
-            PosicionPorJugador posicion = new PosicionPorJugador();
-            posicion.setPortfolio(portfolio);
-            posicion.setPlayerId(jugador.getId());
-            posicion.setCantidad(100);
-            posicion.setReservedQuantity(100);
-            posicionRepository.save(posicion);
+        PosicionPorJugador posicion = posicionRepository.findByPortfolioIdAndPlayerId(portfolio.getId(), jugador.getId())
+                .orElseGet(() -> {
+                    PosicionPorJugador p = new PosicionPorJugador();
+                    p.setPortfolio(portfolio);
+                    p.setPlayerId(jugador.getId());
+                    p.setCantidad(100);
+                    p.setReservedQuantity(100);
+                    return posicionRepository.save(p);
+                });
 
+        boolean hasOpenSellOrder = orderRepository.findOpenSellOrdersForPlayer(jugador.getId()).stream()
+                .anyMatch(o -> o.getUserId().equals(superuser.getId()));
+
+        if (!hasOpenSellOrder) {
             BigDecimal currentPrice = priceProvider.getCurrentPrice(jugador.getId());
             Order order = new Order();
             order.setUserId(superuser.getId());
