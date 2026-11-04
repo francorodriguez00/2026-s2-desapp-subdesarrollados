@@ -9,4 +9,6 @@ public interface PlayerSourceIdRepository extends JpaRepository<PlayerSourceId, 
     Optional<PlayerSourceId> findBySourceAndExternalId(String source, String externalId);
     Optional<PlayerSourceId> findByPlayerIdAndSource(Long playerId, String source);
     List<PlayerSourceId> findAllBySource(String source);
+    long countBySource(String source);
+    long countDistinctPlayerIdBySource(String source);
 }

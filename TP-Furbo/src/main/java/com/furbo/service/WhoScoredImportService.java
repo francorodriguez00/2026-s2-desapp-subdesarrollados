@@ -61,8 +61,21 @@ public class WhoScoredImportService {
         List<PlayerSeasonStats> toSave = new ArrayList<>();
         List<ConflictInfo> conflictsList = new ArrayList<>();
 
+        Map<String, Long> existingInStatsMap = new HashMap<>();
+        for (Map.Entry<String, List<Map<String, Object>>> entry : groupedByWsId.entrySet()) {
+            Long existing = entry.getValue().stream()
+                .map(r -> statsMap.get(buildKey(r)))
+                .filter(Objects::nonNull)
+                .map(PlayerSeasonStats::getPlayerId)
+                .filter(Objects::nonNull)
+                .findFirst().orElse(null);
+            if (existing != null) {
+                existingInStatsMap.put(entry.getKey(), existing);
+            }
+        }
+
         List<Map.Entry<String, List<Map<String, Object>>>> sortedEntries = new ArrayList<>(groupedByWsId.entrySet());
-        sortedEntries.sort((e1, e2) -> WhoscoredGroupComparator.compareEntries(e1, e2, ctx));
+        sortedEntries.sort((e1, e2) -> WhoscoredGroupComparator.compareEntries(e1, e2, ctx, existingInStatsMap));
 
         for (Map.Entry<String, List<Map<String, Object>>> entry : sortedEntries) {
             String wsId = entry.getKey();

@@ -19,14 +19,69 @@ public class PlayerLinkService {
     private final PlayerLinkResolver resolver;
     private final PlayerMatcherService matcherService;
 
+    private final PlayerRepository playerRepository;
+
     public PlayerLinkService(PlayerSeasonStatsRepository statsRepository, 
                              PlayerSourceIdRepository sourceRepository,
                              PlayerLinkResolver resolver, 
-                             PlayerMatcherService matcherService) {
+                             PlayerMatcherService matcherService,
+                             PlayerRepository playerRepository) {
         this.statsRepository = statsRepository;
         this.sourceRepository = sourceRepository;
         this.resolver = resolver;
         this.matcherService = matcherService;
+        this.playerRepository = playerRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public com.furbo.adapter.dto.PlayerLinkSummaryDTO getSummary() {
+        long players = playerRepository.count();
+        long playersWithLink = sourceRepository.countDistinctPlayerIdBySource("WHOSCORED");
+        long playersWithoutLink = players - playersWithLink;
+        long wsPlayersTotal = statsRepository.countDistinctWhoscoredPlayerId();
+        long wsPlayersLinked = statsRepository.countDistinctWhoscoredPlayerIdLinked();
+        long wsPlayersUnlinked = wsPlayersTotal - wsPlayersLinked;
+
+        return new com.furbo.adapter.dto.PlayerLinkSummaryDTO(
+            players, playersWithLink, playersWithoutLink, wsPlayersTotal, wsPlayersLinked, wsPlayersUnlinked
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public com.furbo.adapter.dto.PagedUnmatchedDTO getUnmatched(int page, int size) {
+        int normSize = Math.min(Math.max(size, 1), 200);
+        int normPage = Math.max(page, 0);
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(normPage, normSize);
+        List<Long> wsIds = statsRepository.findUnlinkedWhoscoredPlayerIds(pageable);
+        long totalElements = statsRepository.countUnlinkedWhoscoredPlayerIds();
+        int totalPages = (int) Math.ceil((double) totalElements / normSize);
+
+        List<PlayerSeasonStats> rows = statsRepository.findByWhoscoredPlayerIdIn(wsIds);
+        Map<Long, List<PlayerSeasonStats>> grouped = rows.stream()
+            .collect(Collectors.groupingBy(PlayerSeasonStats::getWhoscoredPlayerId));
+
+        List<UnmatchedPlayerDTO> content = new ArrayList<>();
+        for (Long wsId : wsIds) {
+            List<PlayerSeasonStats> groupRows = grouped.get(wsId);
+            if (groupRows == null || groupRows.isEmpty()) continue;
+
+            PlayerSeasonStats best = groupRows.stream()
+                .max(Comparator.comparingInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0))
+                .orElse(groupRows.get(0));
+
+            int totalMins = groupRows.stream().mapToInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0).sum();
+            content.add(new UnmatchedPlayerDTO(
+                wsId,
+                best.getName(),
+                best.getTeamName(),
+                best.getTournamentName(),
+                best.getPositionText(),
+                totalMins
+            ));
+        }
+
+        return new com.furbo.adapter.dto.PagedUnmatchedDTO(content, normPage, normSize, totalElements, totalPages);
     }
 
     @Transactional

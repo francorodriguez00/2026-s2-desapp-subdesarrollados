@@ -26,10 +26,18 @@ public class PlayerLinkAdminController {
         this.playerLinkService = playerLinkService;
     }
 
-    @GetMapping("/reviews")
-    @Operation(summary = "Listar revisiones pendientes")
-    public List<PlayerMatchReview> listReviews() {
-        return reviewRepository.findAll();
+    @GetMapping("/summary")
+    @Operation(summary = "Resumen de vínculos de jugadores", description = "Retorna contadores de jugadores totales, vinculados, no vinculados, y totales de WhoScored.")
+    public ResponseEntity<com.furbo.adapter.dto.PlayerLinkSummaryDTO> summary() {
+        return ResponseEntity.ok(playerLinkService.getSummary());
+    }
+
+    @GetMapping("/unmatched")
+    @Operation(summary = "Jugadores de WhoScored sin vincular paginados", description = "Retorna lista paginada de jugadores de WhoScored sin player_id, ordenados por minutos totales descendente.")
+    public ResponseEntity<com.furbo.adapter.dto.PagedUnmatchedDTO> unmatched(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(playerLinkService.getUnmatched(page, size));
     }
 
     @PostMapping("/relink")

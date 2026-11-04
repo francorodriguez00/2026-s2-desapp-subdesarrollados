@@ -6,6 +6,8 @@ import com.furbo.repository.*;
 import com.furbo.service.WhoScoredImportService;
 import com.furbo.service.matching.PlayerLinkService;
 import com.furbo.adapter.dto.RelinkSummaryDTO;
+import com.furbo.service.matching.MatchContext;
+import com.furbo.service.matching.WhoscoredGroupComparator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -233,9 +235,13 @@ class PlayerLinkingIntegrationTest {
 
     @Test
     void test6_comparatorUnit() {
-        // Tested via integration order rules or standard comparator check
-        assertThat(true).isTrue();
+        MatchContext ctx = new MatchContext(new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>());
+        java.util.Map.Entry<String, List<java.util.Map<String, Object>>> e1 = new java.util.AbstractMap.SimpleEntry<>("1", List.of(java.util.Map.of("minsPlayed", 100)));
+        java.util.Map.Entry<String, List<java.util.Map<String, Object>>> e2 = new java.util.AbstractMap.SimpleEntry<>("2", List.of(java.util.Map.of("minsPlayed", 200)));
+        int res = WhoscoredGroupComparator.compareEntries(e1, e2, ctx, null);
+        assertThat(res).isNotZero();
     }
+
 
     @Test
     void test7_relinkSummaryLists() throws Exception {
