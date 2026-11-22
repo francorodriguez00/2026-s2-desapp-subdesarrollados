@@ -35,7 +35,7 @@ class NameSimilarityUnitTest {
     void testNameSimilarityRules(String wsName, String playerName, String expectedRule) {
         Player p = new Player();
         p.setName(playerName);
-        NameSimilarity.Result res = NameSimilarity.evaluate(wsName, null, null, p);
+        NameSimilarity.Result res = NameSimilarity.evaluate(wsName, null, null, null, p);
         assertThat(res).isNotNull();
         assertThat(res.rule()).isEqualTo(expectedRule);
     }
@@ -45,14 +45,34 @@ class NameSimilarityUnitTest {
         Player p = new Player();
         p.setName("Carlos Soler");
         p.setPosition("Midfield");
-        NameSimilarity.Result res = NameSimilarity.evaluate("Carlos Martin", null, null, p);
+        NameSimilarity.Result res = NameSimilarity.evaluate("Carlos Martin", null, null, null, p);
         assertThat(res).isNull();
+
+        Player pRafita = new Player();
+        pRafita.setName("Rafa Garrido");
+        pRafita.setPosition("Midfield");
+        NameSimilarity.Result resRafita = NameSimilarity.evaluate("Rafita", null, null, null, pRafita);
+        assertThat(resRafita).isNull();
 
         Player p2 = new Player();
         p2.setName("Álvaro Vallés Rosa");
         p2.setPosition("Goalkeeper");
-        NameSimilarity.Result res2 = NameSimilarity.evaluate("Álvaro Valles", null, null, p2);
+        NameSimilarity.Result res2 = NameSimilarity.evaluate("Álvaro Valles", null, null, "Goalkeeper", p2);
         assertThat(res2).isNotNull();
-        assertThat(res2.score()).isGreaterThan(0.93); // gets position bonus
+        assertThat(res2.score()).isEqualTo(Math.min(1.0, 0.93 + 0.03)); // compatible sums 0.03
+
+        Player pIncompat = new Player();
+        pIncompat.setName("Álvaro Vallés Rosa");
+        pIncompat.setPosition("Forward");
+        NameSimilarity.Result resIncompat = NameSimilarity.evaluate("Álvaro Valles", null, null, "Goalkeeper", pIncompat);
+        assertThat(resIncompat).isNotNull();
+        assertThat(resIncompat.score()).isEqualTo(0.93); // incompatible does not sum
+
+        Player pNone = new Player();
+        pNone.setName("Álvaro Vallés Rosa");
+        pNone.setPosition(null);
+        NameSimilarity.Result resNone = NameSimilarity.evaluate("Álvaro Valles", null, null, null, pNone);
+        assertThat(resNone).isNotNull();
+        assertThat(resNone.score()).isEqualTo(0.93); // no position does not sum
     }
 }

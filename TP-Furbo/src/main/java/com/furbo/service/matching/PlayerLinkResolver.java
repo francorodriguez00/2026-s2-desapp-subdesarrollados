@@ -19,6 +19,63 @@ public class PlayerLinkResolver {
         this.matcherService = matcherService;
     }
 
+    public record ProcessOutcome<T>(T entry, LinkOutcome outcome) {}
+
+    public static <T> java.util.List<ProcessOutcome<T>> executeTwoPasses(
+        java.util.List<T> entries,
+        java.util.function.Function<T, String> wsIdGetter,
+        java.util.function.Function<T, WhoScoredPlayerRef> refGetter,
+        java.util.function.Function<T, Long> existingGetter,
+        java.util.function.Function<T, Integer> minsGetter,
+        MatchContext ctx,
+        PlayerLinkResolver resolver,
+        java.util.Comparator<T> pass1Comparator
+    ) {
+        java.util.List<T> pass1Entries = new java.util.ArrayList<>(entries);
+        if (pass1Comparator != null) {
+            pass1Entries.sort(pass1Comparator);
+        }
+
+        java.util.List<ProcessOutcome<T>> results = new java.util.ArrayList<>();
+        java.util.List<T> unmatchedForPass2 = new java.util.ArrayList<>();
+
+        // Pass 1 (allowFuzzy = false)
+        for (T entry : pass1Entries) {
+            String wsId = wsIdGetter.apply(entry);
+            WhoScoredPlayerRef ref = refGetter.apply(entry);
+            Long existing = existingGetter.apply(entry);
+
+            LinkOutcome outcome = resolver.resolve(wsId, ref, existing, ctx, false);
+            if (outcome.getOutcome() == LinkOutcome.Type.UNMATCHED) {
+                unmatchedForPass2.add(entry);
+            } else {
+                results.add(new ProcessOutcome<>(entry, outcome));
+            }
+        }
+
+        // Sort Pass 2 by total minutes desc, wsId asc
+        unmatchedForPass2.sort((e1, e2) -> {
+            int m1 = minsGetter.apply(e1);
+            int m2 = minsGetter.apply(e2);
+            if (m1 != m2) {
+                return Integer.compare(m2, m1);
+            }
+            return Long.compare(Long.parseLong(wsIdGetter.apply(e1)), Long.parseLong(wsIdGetter.apply(e2)));
+        });
+
+        // Pass 2 (allowFuzzy = true)
+        for (T entry : unmatchedForPass2) {
+            String wsId = wsIdGetter.apply(entry);
+            WhoScoredPlayerRef ref = refGetter.apply(entry);
+            Long existing = existingGetter.apply(entry);
+
+            LinkOutcome outcome = resolver.resolve(wsId, ref, existing, ctx, true);
+            results.add(new ProcessOutcome<>(entry, outcome));
+        }
+
+        return results;
+    }
+
     public LinkOutcome resolve(String wsId, WhoScoredPlayerRef ref, Long existingInStats, MatchContext ctx) {
         return resolve(wsId, ref, existingInStats, ctx, true);
     }
@@ -35,6 +92,9 @@ public class PlayerLinkResolver {
             if (res == LinkResult.CONFLICT) {
                 return LinkOutcome.builder().outcome(LinkOutcome.Type.CONFLICT).disputedPlayerId(existingInStats).build();
             }
+            if (res == LinkResult.CREATED) {
+                ctx.getLinkedPlayerIds().add(existingInStats);
+            }
             persister.deleteReviews("WHOSCORED", wsId);
             return LinkOutcome.builder().playerId(existingInStats).outcome(LinkOutcome.Type.LEGACY_CREATED).build();
         }
@@ -49,6 +109,9 @@ public class PlayerLinkResolver {
             LinkResult res = persister.link(wsId, linked.playerId(), linked.method(), linked.confidence(), needsReview);
             if (res == LinkResult.CONFLICT) {
                  return LinkOutcome.builder().outcome(LinkOutcome.Type.CONFLICT).disputedPlayerId(linked.playerId()).build();
+            }
+            if (res == LinkResult.CREATED) {
+                ctx.getLinkedPlayerIds().add(linked.playerId());
             }
             LinkOutcome.Type type = switch (linked.method()) {
                 case "EXACT_NAME" -> LinkOutcome.Type.EXACT_NAME;

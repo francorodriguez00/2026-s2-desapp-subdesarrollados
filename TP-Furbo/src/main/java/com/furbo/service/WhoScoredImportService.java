@@ -74,47 +74,28 @@ public class WhoScoredImportService {
             }
         }
 
-        List<Map.Entry<String, List<Map<String, Object>>>> pass1Entries = new ArrayList<>();
-        List<Map.Entry<String, List<Map<String, Object>>>> pass2Entries = new ArrayList<>();
+        List<Map.Entry<String, List<Map<String, Object>>>> entriesList = new ArrayList<>(groupedByWsId.entrySet());
 
-        for (Map.Entry<String, List<Map<String, Object>>> entry : groupedByWsId.entrySet()) {
+        List<PlayerLinkResolver.ProcessOutcome<Map.Entry<String, List<Map<String, Object>>>>> resolvedOutcomes = PlayerLinkResolver.executeTwoPasses(
+            entriesList,
+            Map.Entry::getKey,
+            entry -> buildRef(entry.getKey(), entry.getValue()),
+            entry -> existingInStatsMap.get(entry.getKey()),
+            entry -> entry.getValue().stream().mapToInt(r -> getInteger(r, "minsPlayed")).sum(),
+            ctx,
+            linkResolver,
+            (e1, e2) -> WhoscoredGroupComparator.compareEntries(e1, e2, ctx, existingInStatsMap)
+        );
+
+        for (PlayerLinkResolver.ProcessOutcome<Map.Entry<String, List<Map<String, Object>>>> outcomeEntry : resolvedOutcomes) {
+            Map.Entry<String, List<Map<String, Object>>> entry = outcomeEntry.entry();
             String wsId = entry.getKey();
             List<Map<String, Object>> rows = entry.getValue();
-            WhoScoredPlayerRef ref = buildRef(wsId, rows);
-            Long existingInStats = existingInStatsMap.get(wsId);
+            LinkOutcome outcome = outcomeEntry.outcome();
 
-            LinkOutcome outcome = linkResolver.resolve(wsId, ref, existingInStats, ctx, false);
-            if (outcome.getOutcome() == LinkOutcome.Type.UNMATCHED) {
-                pass2Entries.add(entry);
-            } else {
-                pass1Entries.add(entry);
-            }
-        }
-
-        pass1Entries.sort((e1, e2) -> WhoscoredGroupComparator.compareEntries(e1, e2, ctx, existingInStatsMap));
-        pass2Entries.sort((e1, e2) -> {
-            int mins1 = e1.getValue().stream().mapToInt(r -> r.get("minsPlayed") instanceof Number ? ((Number)r.get("minsPlayed")).intValue() : 0).sum();
-            int mins2 = e2.getValue().stream().mapToInt(r -> r.get("minsPlayed") instanceof Number ? ((Number)r.get("minsPlayed")).intValue() : 0).sum();
-            if (mins1 != mins2) {
-                return Integer.compare(mins2, mins1);
-            }
-            return Long.compare(Long.parseLong(e1.getKey()), Long.parseLong(e2.getKey()));
-        });
-
-        List<Map.Entry<String, List<Map<String, Object>>>> sortedEntries = new ArrayList<>();
-        sortedEntries.addAll(pass1Entries);
-        sortedEntries.addAll(pass2Entries);
-
-        for (Map.Entry<String, List<Map<String, Object>>> entry : sortedEntries) {
-            String wsId = entry.getKey();
-            List<Map<String, Object>> rows = entry.getValue();
-
-            WhoScoredPlayerRef ref = buildRef(wsId, rows);
-            Long existingInStats = existingInStatsMap.get(wsId);
-
-            LinkOutcome outcome = linkResolver.resolve(wsId, ref, existingInStats, ctx, true);
             outcomes.put(outcome.getOutcome(), outcomes.getOrDefault(outcome.getOutcome(), 0) + 1);
-            
+            WhoScoredPlayerRef ref = buildRef(wsId, rows);
+
             if (outcome.getOutcome() == LinkOutcome.Type.CONFLICT) {
                 String ownerExternalId = "";
                 var existingSource = linkResolver.tryFindExistingByPlayerId(outcome.getDisputedPlayerId());

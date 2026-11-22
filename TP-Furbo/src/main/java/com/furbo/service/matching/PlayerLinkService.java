@@ -95,10 +95,29 @@ public class PlayerLinkService {
             .filter(s -> s.getWhoscoredPlayerId() != null)
             .collect(Collectors.groupingBy(PlayerSeasonStats::getWhoscoredPlayerId));
 
-        List<Map.Entry<Long, List<PlayerSeasonStats>>> sortedEntries = new ArrayList<>(groupedForStats.entrySet());
-        sortedEntries.sort((e1, e2) -> WhoscoredGroupComparator.compareStatsEntries(e1, e2, ctx));
+        List<Map.Entry<Long, List<PlayerSeasonStats>>> entriesList = new ArrayList<>(groupedForStats.entrySet());
 
-        for (Map.Entry<Long, List<PlayerSeasonStats>> entry : sortedEntries) {
+        List<PlayerLinkResolver.ProcessOutcome<Map.Entry<Long, List<PlayerSeasonStats>>>> resolvedOutcomes = PlayerLinkResolver.executeTwoPasses(
+            entriesList,
+            entry -> String.valueOf(entry.getKey()),
+            entry -> {
+                List<PlayerSeasonStats> rows = entry.getValue();
+                PlayerSeasonStats best = rows.stream()
+                    .max(Comparator.comparingInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0))
+                    .orElse(rows.get(0));
+                return new WhoScoredPlayerRef(String.valueOf(entry.getKey()), best.getName(), best.getFirstName(), best.getLastName(),
+                    rows.stream().map(PlayerSeasonStats::getTeamName).distinct().toList(), 
+                    rows.stream().map(PlayerSeasonStats::getTournamentId).distinct().toList(), best.getPositionText());
+            },
+            entry -> entry.getValue().stream().map(PlayerSeasonStats::getPlayerId).filter(Objects::nonNull).findFirst().orElse(null),
+            entry -> entry.getValue().stream().mapToInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0).sum(),
+            ctx,
+            resolver,
+            (e1, e2) -> WhoscoredGroupComparator.compareStatsEntries(e1, e2, ctx)
+        );
+
+        for (PlayerLinkResolver.ProcessOutcome<Map.Entry<Long, List<PlayerSeasonStats>>> outcomeEntry : resolvedOutcomes) {
+            Map.Entry<Long, List<PlayerSeasonStats>> entry = outcomeEntry.entry();
             Long wsIdLong = entry.getKey();
             String wsId = String.valueOf(wsIdLong);
             List<PlayerSeasonStats> rows = entry.getValue();
@@ -106,12 +125,7 @@ public class PlayerLinkService {
                 .max(Comparator.comparingInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0))
                 .orElse(rows.get(0));
 
-            Long existingInStats = rows.stream().map(PlayerSeasonStats::getPlayerId).filter(Objects::nonNull).findFirst().orElse(null);
-            WhoScoredPlayerRef ref = new WhoScoredPlayerRef(wsId, best.getName(), best.getFirstName(), best.getLastName(),
-                        rows.stream().map(PlayerSeasonStats::getTeamName).distinct().toList(), 
-                        rows.stream().map(PlayerSeasonStats::getTournamentId).distinct().toList(), best.getPositionText());
-
-            LinkOutcome outcome = resolver.resolve(wsId, ref, existingInStats, ctx);
+            LinkOutcome outcome = outcomeEntry.outcome();
             
             switch (outcome.getOutcome()) {
                 case ALREADY_LINKED -> alreadyLinked++;

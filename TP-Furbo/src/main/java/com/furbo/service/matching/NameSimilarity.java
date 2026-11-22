@@ -7,7 +7,7 @@ public class NameSimilarity {
 
     public record Result(String rule, double score) {}
 
-    public static Result evaluate(String wsName, String wsFirstName, String wsLastName, Player player) {
+    public static Result evaluate(String wsName, String wsFirstName, String wsLastName, String wsPositionText, Player player) {
         String pName = player.getName();
         String pTeam = player.getTeam();
         String pPos = player.getPosition();
@@ -37,7 +37,7 @@ public class NameSimilarity {
         }
 
         double finalScore = best.score();
-        if (isPositionCompatible(player.getPosition(), player.getPosition())) { // placeholder position compatibility check
+        if (wsPositionText != null && player.getPosition() != null && isPositionCompatible(wsPositionText, player.getPosition())) {
             finalScore = Math.min(1.0, finalScore + 0.03);
         }
 
@@ -162,7 +162,7 @@ public class NameSimilarity {
     }
 
     public static boolean isPositionCompatible(String wsPos, String pPos) {
-        if (wsPos == null || pPos == null) return true;
+        if (wsPos == null || pPos == null) return false;
         String w = wsPos.toLowerCase();
         String p = pPos.toLowerCase();
         if (w.contains("goalk") && p.contains("goalk")) return true;

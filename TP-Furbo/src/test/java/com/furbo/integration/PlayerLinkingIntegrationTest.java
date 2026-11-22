@@ -251,4 +251,25 @@ class PlayerLinkingIntegrationTest {
         RelinkSummaryDTO summary = linkService.relinkAll();
         assertThat(summary.unmatchedPlayers()).isNotEmpty();
     }
+
+    @Test
+    void test8_twoPassesExactTakesPrecedenceOverFuzzyEvenWithMoreMinutes() throws Exception {
+        Player p1 = new Player();
+        p1.setExternalId(200L);
+        p1.setName("Vitinha");
+        p1.setTeam("PSG");
+        playerRepository.save(p1);
+
+        // ID 1: Exact name, fewer minutes (100)
+        // ID 2: Fuzzy/typo name or similar, more minutes (3000)
+        createMockPageJson("page_1.json", 1111L, "Vitinha", "PSG", 100, 1.0);
+        createMockPageJson("page_2.json", 2222L, "Vitinh", "PSG", 3000, 1.0);
+
+        importService.importLeague(tempLeagueDir.toString());
+
+        List<PlayerSeasonStats> stats1 = statsRepository.findByWhoscoredPlayerIdIn(List.of(1111L));
+        List<PlayerSeasonStats> stats2 = statsRepository.findByWhoscoredPlayerIdIn(List.of(2222L));
+
+        assertThat(stats1.get(0).getPlayerId()).isEqualTo(p1.getId());
+    }
 }
