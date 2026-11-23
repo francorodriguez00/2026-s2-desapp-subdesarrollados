@@ -1,0 +1,18 @@
+
+:root {
+  --color-primary: #1e293b;
+  --color-text: #334155;
+  --color-positive: #16a34a;
+  --color-negative: #dc2626;
+  --color-bg: #f8fafc;
+  --color-border: #e2e8f0;
+  --spacing: 16px;
+  --border-radius: 6px;
+}
+
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}

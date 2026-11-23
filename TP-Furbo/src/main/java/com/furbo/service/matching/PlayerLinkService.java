@@ -1,0 +1,194 @@
+package com.furbo.service.matching;
+
+import com.furbo.model.*;
+import com.furbo.repository.*;
+import com.furbo.adapter.dto.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@Slf4j
+public class PlayerLinkService {
+
+    private final PlayerSeasonStatsRepository statsRepository;
+    private final PlayerSourceIdRepository sourceRepository;
+    private final PlayerLinkResolver resolver;
+    private final PlayerMatcherService matcherService;
+
+    private final PlayerRepository playerRepository;
+    private final PlayerMatchReviewRepository reviewRepository;
+
+    public PlayerLinkService(PlayerSeasonStatsRepository statsRepository, 
+                             PlayerSourceIdRepository sourceRepository,
+                             PlayerLinkResolver resolver, 
+                             PlayerMatcherService matcherService,
+                             PlayerRepository playerRepository,
+                             PlayerMatchReviewRepository reviewRepository) {
+        this.statsRepository = statsRepository;
+        this.sourceRepository = sourceRepository;
+        this.resolver = resolver;
+        this.matcherService = matcherService;
+        this.playerRepository = playerRepository;
+        this.reviewRepository = reviewRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public com.furbo.adapter.dto.PlayerLinkSummaryDTO getSummary() {
+        long players = playerRepository.count();
+        long playersWithLink = sourceRepository.countDistinctPlayerIdBySource("WHOSCORED");
+        long playersWithoutLink = players - playersWithLink;
+        long wsPlayersTotal = statsRepository.countDistinctWhoscoredPlayerId();
+        long wsPlayersLinked = statsRepository.countDistinctWhoscoredPlayerIdLinked();
+        long wsPlayersUnlinked = wsPlayersTotal - wsPlayersLinked;
+        long pendingReviews = reviewRepository.countPendingUnlinkedExternalIds();
+        long linksToConfirm = sourceRepository.countBySourceAndNeedsReview("WHOSCORED", true);
+
+        return new com.furbo.adapter.dto.PlayerLinkSummaryDTO(
+            players, playersWithLink, playersWithoutLink, wsPlayersTotal, wsPlayersLinked, wsPlayersUnlinked, pendingReviews, linksToConfirm
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public com.furbo.adapter.dto.PagedUnmatchedDTO getUnmatched(int page, int size) {
+        int normSize = Math.min(Math.max(size, 1), 200);
+        int normPage = Math.max(page, 0);
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(normPage, normSize);
+        List<Long> wsIds = statsRepository.findUnlinkedWhoscoredPlayerIds(pageable);
+        long totalElements = statsRepository.countUnlinkedWhoscoredPlayerIds();
+        int totalPages = (int) Math.ceil((double) totalElements / normSize);
+
+        List<PlayerSeasonStats> rows = statsRepository.findByWhoscoredPlayerIdIn(wsIds);
+        Map<Long, List<PlayerSeasonStats>> grouped = rows.stream()
+            .collect(Collectors.groupingBy(PlayerSeasonStats::getWhoscoredPlayerId));
+
+        List<UnmatchedPlayerDTO> content = new ArrayList<>();
+        for (Long wsId : wsIds) {
+            List<PlayerSeasonStats> groupRows = grouped.get(wsId);
+            if (groupRows == null || groupRows.isEmpty()) continue;
+
+            PlayerSeasonStats best = groupRows.stream()
+                .max(Comparator.comparingInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0))
+                .orElse(groupRows.get(0));
+
+            int totalMins = groupRows.stream().mapToInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0).sum();
+            content.add(new UnmatchedPlayerDTO(
+                wsId,
+                best.getName(),
+                best.getTeamName(),
+                best.getTournamentName(),
+                best.getPositionText(),
+                totalMins
+            ));
+        }
+
+        return new com.furbo.adapter.dto.PagedUnmatchedDTO(content, normPage, normSize, totalElements, totalPages);
+    }
+
+    @Transactional
+    public RelinkSummaryDTO relinkAll() {
+        MatchContext ctx = matcherService.buildContext();
+        int alreadyLinked = 0, legacyCreated = 0, exactName = 0, exactTeam = 0, fuzzyTeam = 0, conflicts = 0, reviewPending = 0, unmatched = 0;
+
+        List<ConflictDTO> conflictDTOs = new ArrayList<>();
+        List<PlayerSeasonStats> trackedRows = statsRepository.findAll();
+        Map<Long, List<PlayerSeasonStats>> groupedForStats = trackedRows.stream()
+            .filter(s -> s.getWhoscoredPlayerId() != null)
+            .collect(Collectors.groupingBy(PlayerSeasonStats::getWhoscoredPlayerId));
+
+        List<Map.Entry<Long, List<PlayerSeasonStats>>> entriesList = new ArrayList<>(groupedForStats.entrySet());
+
+        List<PlayerLinkResolver.ProcessOutcome<Map.Entry<Long, List<PlayerSeasonStats>>>> resolvedOutcomes = PlayerLinkResolver.executeTwoPasses(
+            entriesList,
+            entry -> String.valueOf(entry.getKey()),
+            entry -> {
+                List<PlayerSeasonStats> rows = entry.getValue();
+                PlayerSeasonStats best = rows.stream()
+                    .max(Comparator.comparingInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0))
+                    .orElse(rows.get(0));
+                return new WhoScoredPlayerRef(String.valueOf(entry.getKey()), best.getName(), best.getFirstName(), best.getLastName(),
+                    rows.stream().map(PlayerSeasonStats::getTeamName).distinct().toList(), 
+                    rows.stream().map(PlayerSeasonStats::getTournamentId).distinct().toList(), best.getPositionText());
+            },
+            entry -> entry.getValue().stream().map(PlayerSeasonStats::getPlayerId).filter(Objects::nonNull).findFirst().orElse(null),
+            entry -> entry.getValue().stream().mapToInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0).sum(),
+            ctx,
+            resolver,
+            (e1, e2) -> WhoscoredGroupComparator.compareStatsEntries(e1, e2, ctx)
+        );
+
+        for (PlayerLinkResolver.ProcessOutcome<Map.Entry<Long, List<PlayerSeasonStats>>> outcomeEntry : resolvedOutcomes) {
+            Map.Entry<Long, List<PlayerSeasonStats>> entry = outcomeEntry.entry();
+            Long wsIdLong = entry.getKey();
+            String wsId = String.valueOf(wsIdLong);
+            List<PlayerSeasonStats> rows = entry.getValue();
+            PlayerSeasonStats best = rows.stream()
+                .max(Comparator.comparingInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0))
+                .orElse(rows.get(0));
+
+            LinkOutcome outcome = outcomeEntry.outcome();
+            
+            switch (outcome.getOutcome()) {
+                case ALREADY_LINKED -> alreadyLinked++;
+                case LEGACY_CREATED -> legacyCreated++;
+                case EXACT_NAME -> exactName++;
+                case EXACT_TEAM -> exactTeam++;
+                case FUZZY_TEAM -> fuzzyTeam++;
+                case REVIEW -> reviewPending++;
+                case UNMATCHED -> unmatched++;
+                case CONFLICT -> {
+                    conflicts++;
+                    String ownerExtId = "";
+                    Optional<PlayerSourceId> ownerSource = sourceRepository.findByPlayerIdAndSource(outcome.getDisputedPlayerId(), "WHOSCORED");
+                    if (ownerSource.isPresent()) {
+                        ownerExtId = ownerSource.get().getExternalId();
+                    }
+                    conflictDTOs.add(new ConflictDTO(
+                        wsId,
+                        best.getName(),
+                        best.getTeamName(),
+                        rows.stream().mapToInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0).sum(),
+                        outcome.getDisputedPlayerId(),
+                        ownerExtId
+                    ));
+                    statsRepository.clearPlayerIdForWhoscoredId(wsIdLong);
+                }
+            }
+
+            if (outcome.getOutcome() != LinkOutcome.Type.CONFLICT && outcome.getPlayerId() != null) {
+                boolean needsUpdate = rows.stream().anyMatch(s -> !Objects.equals(s.getPlayerId(), outcome.getPlayerId()));
+                if (needsUpdate) {
+                    statsRepository.setPlayerIdForWhoscoredId(wsIdLong, outcome.getPlayerId());
+                }
+            }
+        }
+
+        List<PlayerSeasonStats> updatedStats = statsRepository.findAll();
+        List<UnmatchedPlayerDTO> unmatchedDTOs = updatedStats.stream()
+            .filter(s -> s.getPlayerId() == null)
+            .collect(Collectors.groupingBy(PlayerSeasonStats::getWhoscoredPlayerId))
+            .entrySet().stream()
+            .map(e -> {
+                PlayerSeasonStats best = e.getValue().stream().max(Comparator.comparingInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0)).orElse(e.getValue().get(0));
+                return new UnmatchedPlayerDTO(e.getKey(), best.getName(), best.getTeamName(), 
+                    best.getTournamentName(), best.getPositionText(), 
+                    e.getValue().stream().mapToInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0).sum());
+            })
+            .sorted(Comparator.comparingInt(UnmatchedPlayerDTO::totalMins).reversed())
+            .limit(30)
+            .toList();
+
+        RelinkSummaryDTO summary = new RelinkSummaryDTO(
+            alreadyLinked, legacyCreated, exactName, exactTeam, fuzzyTeam, conflicts, reviewPending, unmatched, unmatchedDTOs, conflictDTOs
+        );
+
+        log.info("Resumen relink: alreadyLinked={}, legacyCreated={}, exactName={}, exactTeam={}, fuzzyTeam={}, conflicts={}, reviewPending={}, unmatched={}, unmatchedPlayersCount={}, conflictsCount={}",
+            alreadyLinked, legacyCreated, exactName, exactTeam, fuzzyTeam, conflicts, reviewPending, unmatched, unmatchedDTOs.size(), conflictDTOs.size());
+
+        return summary;
+    }
+}
