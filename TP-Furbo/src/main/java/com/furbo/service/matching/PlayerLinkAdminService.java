@@ -10,8 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -22,17 +21,20 @@ public class PlayerLinkAdminService {
     private final PlayerSeasonStatsRepository statsRepository;
     private final PlayerRepository playerRepository;
     private final PlayerMatchingPersister persister;
+    private final PlayerMatcherService matcherService;
 
     public PlayerLinkAdminService(PlayerSourceIdRepository sourceRepository,
                                   PlayerMatchReviewRepository reviewRepository,
                                   PlayerSeasonStatsRepository statsRepository,
                                   PlayerRepository playerRepository,
-                                  PlayerMatchingPersister persister) {
+                                  PlayerMatchingPersister persister,
+                                  PlayerMatcherService matcherService) {
         this.sourceRepository = sourceRepository;
         this.reviewRepository = reviewRepository;
         this.statsRepository = statsRepository;
         this.playerRepository = playerRepository;
         this.persister = persister;
+        this.matcherService = matcherService;
     }
 
     private Long parseExternalId(String externalId) {
@@ -190,5 +192,272 @@ public class PlayerLinkAdminService {
         }
 
         return linkManually(externalId, candidatePlayerId);
+    }
+
+    @Transactional(readOnly = true)
+    public com.furbo.adapter.dto.PagedReviewItemsDTO getPendingReviews(int page, int size) {
+        int normSize = Math.min(Math.max(size, 1), 200);
+        int normPage = Math.max(page, 0);
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(normPage, normSize);
+        org.springframework.data.domain.Page<String> wsIdsPage = reviewRepository.findPendingUnlinkedExternalIds(pageable);
+        List<String> externalIds = wsIdsPage.getContent();
+        long totalElements = wsIdsPage.getTotalElements();
+        int totalPages = wsIdsPage.getTotalPages();
+
+        if (externalIds.isEmpty()) {
+            return new com.furbo.adapter.dto.PagedReviewItemsDTO(List.of(), normPage, normSize, totalElements, totalPages);
+        }
+
+        List<Long> wsIdsLong = externalIds.stream().map(Long::parseLong).toList();
+        List<PlayerSeasonStats> stats = statsRepository.findByWhoscoredPlayerIdIn(wsIdsLong);
+        Map<Long, List<PlayerSeasonStats>> statsGrouped = stats.stream()
+            .collect(java.util.stream.Collectors.groupingBy(PlayerSeasonStats::getWhoscoredPlayerId));
+
+        List<PlayerMatchReview> reviews = reviewRepository.findPendingBySourceAndExternalIdIn("WHOSCORED", externalIds);
+        Map<String, List<PlayerMatchReview>> reviewsGrouped = reviews.stream()
+            .collect(java.util.stream.Collectors.groupingBy(PlayerMatchReview::getExternalId));
+
+        Set<Long> candidatePlayerIds = reviews.stream()
+            .map(PlayerMatchReview::getCandidatePlayerId)
+            .collect(java.util.stream.Collectors.toSet());
+
+        Map<Long, Player> playersMap = playerRepository.findAllById(candidatePlayerIds).stream()
+            .collect(java.util.stream.Collectors.toMap(Player::getId, p -> p));
+
+        Map<Long, String> playerToWsIdMap = sourceRepository.findAllBySource("WHOSCORED").stream()
+            .collect(java.util.stream.Collectors.toMap(PlayerSourceId::getPlayerId, PlayerSourceId::getExternalId, (e1, e2) -> e1));
+
+        List<com.furbo.adapter.dto.ReviewItemGroupDTO> content = new ArrayList<>();
+        for (String extId : externalIds) {
+            Long wsId = Long.parseLong(extId);
+            List<PlayerSeasonStats> groupStats = statsGrouped.getOrDefault(wsId, List.of());
+            if (groupStats.isEmpty()) continue;
+
+            PlayerSeasonStats best = groupStats.stream()
+                .max(Comparator.comparingInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0))
+                .orElse(groupStats.get(0));
+
+            List<String> teamNames = groupStats.stream()
+                .map(PlayerSeasonStats::getTeamName)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+
+            int totalMinutes = groupStats.stream()
+                .mapToInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0)
+                .sum();
+
+            List<PlayerMatchReview> extReviews = reviewsGrouped.getOrDefault(extId, List.of());
+            extReviews.sort(Comparator.comparingDouble(PlayerMatchReview::getScore).reversed());
+
+            List<com.furbo.adapter.dto.ReviewCandidateDTO> candidateDTOs = new ArrayList<>();
+            for (PlayerMatchReview r : extReviews) {
+                Player p = playersMap.get(r.getCandidatePlayerId());
+                if (p == null) continue;
+                String linkedWs = playerToWsIdMap.get(p.getId());
+                candidateDTOs.add(new com.furbo.adapter.dto.ReviewCandidateDTO(
+                    p.getId(),
+                    p.getName(),
+                    p.getTeam(),
+                    p.getPosition(),
+                    p.getLeague(),
+                    p.getNationality(),
+                    r.getScore() != null ? r.getScore() : 0.0,
+                    r.getReason(),
+                    linkedWs
+                ));
+            }
+
+            content.add(new com.furbo.adapter.dto.ReviewItemGroupDTO(
+                wsId,
+                best.getName(),
+                teamNames,
+                best.getTournamentName(),
+                best.getPositionText(),
+                best.getAge(),
+                best.getHeight(),
+                best.getWeight(),
+                totalMinutes,
+                candidateDTOs
+            ));
+        }
+
+        return new com.furbo.adapter.dto.PagedReviewItemsDTO(content, normPage, normSize, totalElements, totalPages);
+    }
+
+    @Transactional(readOnly = true)
+    public com.furbo.adapter.dto.UnmatchedCandidatesResponseDTO getUnmatchedCandidates(Long whoscoredId, String name, int size) {
+        int normSize = Math.min(Math.max(size, 1), 200);
+        validateStatsExist(whoscoredId);
+
+        List<PlayerSeasonStats> stats = statsRepository.findByWhoscoredPlayerId(whoscoredId);
+        PlayerSeasonStats best = stats.stream()
+            .max(Comparator.comparingInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0))
+            .orElse(stats.get(0));
+
+        List<String> teamNames = stats.stream()
+            .map(PlayerSeasonStats::getTeamName)
+            .filter(java.util.Objects::nonNull)
+            .distinct()
+            .toList();
+
+        int totalMinutes = stats.stream()
+            .mapToInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0)
+            .sum();
+
+        List<com.furbo.adapter.dto.WhoscoredRowDTO> rows = stats.stream()
+            .map(s -> new com.furbo.adapter.dto.WhoscoredRowDTO(
+                s.getTeamName(),
+                s.getTournamentName(),
+                s.getSeasonName(),
+                s.getMinsPlayed() != null ? s.getMinsPlayed() : 0
+            ))
+            .toList();
+
+        com.furbo.adapter.dto.WhoscoredPlayerSummaryDTO playerSummary = new com.furbo.adapter.dto.WhoscoredPlayerSummaryDTO(
+            whoscoredId,
+            best.getName(),
+            teamNames,
+            best.getTournamentName(),
+            best.getPositionText(),
+            best.getAge(),
+            best.getHeight(),
+            best.getWeight(),
+            totalMinutes,
+            rows
+        );
+
+        Set<Long> linkedPlayerIds = sourceRepository.findAllBySource("WHOSCORED").stream()
+            .map(PlayerSourceId::getPlayerId)
+            .collect(java.util.stream.Collectors.toSet());
+
+        List<Player> allPlayers = playerRepository.findAll();
+        List<Player> pool = new ArrayList<>();
+
+        if (name == null || name.isBlank()) {
+            MatchContext ctx = matcherService.buildContext();
+            Set<String> normWsTeams = teamNames.stream()
+                .map(NameNormalizer::normalizeTeam)
+                .collect(java.util.stream.Collectors.toSet());
+
+            for (Player p : allPlayers) {
+                if (linkedPlayerIds.contains(p.getId())) continue;
+                String pTeamNorm = NameNormalizer.normalizeTeam(p.getTeam());
+                boolean matches = false;
+                for (String wsTeamNorm : normWsTeams) {
+                    String mapped = ctx.getTeamMap() != null ? ctx.getTeamMap().get(wsTeamNorm) : null;
+                    if ((mapped != null && pTeamNorm.equals(mapped)) || 
+                        (pTeamNorm.contains(wsTeamNorm) || wsTeamNorm.contains(pTeamNorm))) {
+                        matches = true;
+                        break;
+                    }
+                }
+                if (matches) {
+                    pool.add(p);
+                }
+            }
+        } else {
+            String normSearch = NameNormalizer.normalizeName(name);
+            for (Player p : allPlayers) {
+                if (linkedPlayerIds.contains(p.getId())) continue;
+                if (NameNormalizer.normalizeName(p.getName()).contains(normSearch)) {
+                    pool.add(p);
+                }
+            }
+        }
+
+        record ScoredItem(Player player, Double score, String rule) {}
+        List<ScoredItem> scoredItems = new ArrayList<>();
+
+        for (Player p : pool) {
+            NameSimilarity.Result res = NameSimilarity.evaluate(best.getName(), best.getFirstName(), best.getLastName(), best.getPositionText(), p);
+            Double sc = res != null ? res.score() : null;
+            String rl = res != null ? res.rule() : null;
+            scoredItems.add(new ScoredItem(p, sc, rl));
+        }
+
+        scoredItems.sort((a, b) -> {
+            if (a.score() != null && b.score() != null) {
+                int cmp = Double.compare(b.score(), a.score());
+                if (cmp != 0) return cmp;
+            } else if (a.score() != null) {
+                return -1;
+            } else if (b.score() != null) {
+                return 1;
+            }
+            return a.player().getName().compareToIgnoreCase(b.player().getName());
+        });
+
+        if (scoredItems.size() > normSize) {
+            scoredItems = scoredItems.subList(0, normSize);
+        }
+
+        List<com.furbo.adapter.dto.UnmatchedCandidateItemDTO> candidateItems = scoredItems.stream()
+            .map(si -> new com.furbo.adapter.dto.UnmatchedCandidateItemDTO(
+                si.player().getId(),
+                si.player().getName(),
+                si.player().getTeam(),
+                si.player().getPosition(),
+                si.player().getLeague(),
+                si.player().getNationality(),
+                si.score(),
+                si.rule()
+            ))
+            .toList();
+
+        return new com.furbo.adapter.dto.UnmatchedCandidatesResponseDTO(playerSummary, candidateItems);
+    }
+
+    @Transactional(readOnly = true)
+    public com.furbo.adapter.dto.PagedToConfirmDTO getToConfirmLinks(int page, int size) {
+        int normSize = Math.min(Math.max(size, 1), 200);
+        int normPage = Math.max(page, 0);
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(normPage, normSize);
+        org.springframework.data.domain.Page<PlayerSourceId> pageLinks = sourceRepository.findToConfirmPaginated(pageable);
+        List<PlayerSourceId> links = pageLinks.getContent();
+        long totalElements = pageLinks.getTotalElements();
+        int totalPages = pageLinks.getTotalPages();
+
+        List<com.furbo.adapter.dto.ToConfirmItemDTO> content = new ArrayList<>();
+        for (PlayerSourceId s : links) {
+            Long wsId = Long.parseLong(s.getExternalId());
+            List<PlayerSeasonStats> stats = statsRepository.findByWhoscoredPlayerId(wsId);
+            PlayerSeasonStats best = stats.stream()
+                .max(Comparator.comparingInt(st -> st.getMinsPlayed() != null ? st.getMinsPlayed() : 0))
+                .orElse(stats.isEmpty() ? null : stats.get(0));
+
+            List<String> teamNames = stats.stream()
+                .map(PlayerSeasonStats::getTeamName)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+
+            int totalMinutes = stats.stream()
+                .mapToInt(st -> st.getMinsPlayed() != null ? st.getMinsPlayed() : 0)
+                .sum();
+
+            Player p = playerRepository.findById(s.getPlayerId()).orElse(null);
+
+            content.add(new com.furbo.adapter.dto.ToConfirmItemDTO(
+                wsId,
+                best != null ? best.getName() : "Unknown",
+                teamNames,
+                best != null ? best.getAge() : null,
+                best != null ? best.getHeight() : null,
+                best != null ? best.getWeight() : null,
+                totalMinutes,
+                s.getPlayerId(),
+                p != null ? p.getName() : null,
+                p != null ? p.getTeam() : null,
+                p != null ? p.getPosition() : null,
+                s.getMatchMethod(),
+                s.getConfidence(),
+                s.getCreatedAt()
+            ));
+        }
+
+        return new com.furbo.adapter.dto.PagedToConfirmDTO(content, normPage, normSize, totalElements, totalPages);
     }
 }

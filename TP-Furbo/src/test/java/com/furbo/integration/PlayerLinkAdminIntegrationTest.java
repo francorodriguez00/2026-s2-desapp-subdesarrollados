@@ -266,35 +266,45 @@ class PlayerLinkAdminIntegrationTest {
                 .andExpect(jsonPath("$.action").value("LINKED"));
 
         assertThat(sourceRepository.findBySourceAndExternalId("WHOSCORED", "300")).isPresent();
+        List<PlayerSeasonStats> stats = statsRepository.findByWhoscoredPlayerId(300L);
+        assertThat(stats).isNotEmpty();
+        for (PlayerSeasonStats s : stats) {
+            assertThat(s.getPlayerId()).isEqualTo(player.getId());
+        }
+        assertThat(reviewRepository.findBySourceAndExternalId("WHOSCORED", "300")).isEmpty();
     }
 
     @Test
     void test4_rejectCandidateAndRelink() throws Exception {
         Player player = new Player();
         player.setExternalId(50L);
-        player.setName("Candidate Player");
-        player.setTeam("Liverpool");
+        player.setName("Bukayo Saka");
+        player.setTeam("Arsenal");
         playerRepository.save(player);
 
-        createMockPageJson("page_1.json", 400L, "Mohamed Salah", "Liverpool", 800);
+        createMockPageJson("page_1.json", 400L, "Bukayo Saka", "Arsenal", 800);
         importService.importLeague(tempLeagueDir.toString());
+        
+        // Assert linkage works without rejection
+        linkService.relinkAll();
+        assertThat(sourceRepository.findBySourceAndExternalId("WHOSCORED", "400")).isPresent();
 
+        // Cleanup link and stats player id
+        sourceRepository.deleteAll();
+        statsRepository.clearPlayerIdForWhoscoredId(400L);
+        assertThat(sourceRepository.findBySourceAndExternalId("WHOSCORED", "400")).isEmpty();
+
+        // Save a rejected review for this player
         PlayerMatchReview rev = PlayerMatchReview.builder()
             .source("WHOSCORED")
             .externalId("400")
             .candidatePlayerId(player.getId())
-            .score(0.95)
+            .score(1.0)
             .reason("EXACT_NAME")
-            .status(ReviewStatus.PENDING)
+            .status(ReviewStatus.REJECTED)
             .createdAt(java.time.LocalDateTime.now())
             .build();
         reviewRepository.save(rev);
-
-        mockMvc.perform(post("/admin/player-links/reviews/400/reject")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(new com.furbo.adapter.dto.RejectRequestDTO(player.getId()))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.action").value("REJECTED"));
 
         linkService.relinkAll();
 
@@ -412,5 +422,143 @@ class PlayerLinkAdminIntegrationTest {
 
         PlayerSourceId link = sourceRepository.findBySourceAndExternalId("WHOSCORED", "800").get();
         assertThat(link.getMatchMethod()).isEqualTo("MANUAL");
+    }
+
+    @Test
+    void test9_rejectWithoutCandidateAllRejected() throws Exception {
+        Player p1 = new Player();
+        p1.setExternalId(101L);
+        p1.setName("P1");
+        playerRepository.save(p1);
+
+        Player p2 = new Player();
+        p2.setExternalId(102L);
+        p2.setName("P2");
+        playerRepository.save(p2);
+
+        PlayerMatchReview r1 = PlayerMatchReview.builder()
+            .source("WHOSCORED").externalId("900").candidatePlayerId(p1.getId()).score(0.8).status(ReviewStatus.PENDING).createdAt(java.time.LocalDateTime.now()).build();
+        PlayerMatchReview r2 = PlayerMatchReview.builder()
+            .source("WHOSCORED").externalId("900").candidatePlayerId(p2.getId()).score(0.7).status(ReviewStatus.PENDING).createdAt(java.time.LocalDateTime.now()).build();
+        reviewRepository.saveAll(List.of(r1, r2));
+
+        mockMvc.perform(post("/admin/player-links/reviews/900/reject"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.action").value("REJECTED"));
+
+        List<PlayerMatchReview> reviews = reviewRepository.findBySourceAndExternalId("WHOSCORED", "900");
+        for (PlayerMatchReview r : reviews) {
+            assertThat(r.getStatus()).isEqualTo(ReviewStatus.REJECTED);
+        }
+    }
+
+    @Test
+    void test10_nullStatusReviewTreatedAsPending() throws Exception {
+        Player p = new Player();
+        p.setExternalId(103L);
+        p.setName("Null Status Player");
+        playerRepository.save(p);
+
+        PlayerMatchReview r = PlayerMatchReview.builder()
+            .source("WHOSCORED").externalId("950").candidatePlayerId(p.getId()).score(0.9).status(null).createdAt(java.time.LocalDateTime.now()).build();
+        reviewRepository.save(r);
+
+        // Can be rejected even with null status
+        mockMvc.perform(post("/admin/player-links/reviews/950/reject")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new com.furbo.adapter.dto.RejectRequestDTO(p.getId()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.action").value("REJECTED"));
+
+        assertThat(reviewRepository.findBySourceAndExternalIdAndCandidatePlayerId("WHOSCORED", "950", p.getId()).get(0).getStatus()).isEqualTo(ReviewStatus.REJECTED);
+    }
+
+    @Test
+    void test11_deletePendingReviewsVsDeleteReviews() throws Exception {
+        Player p1 = new Player();
+        p1.setExternalId(104L);
+        p1.setName("P1");
+        playerRepository.save(p1);
+
+        Player p2 = new Player();
+        p2.setExternalId(105L);
+        p2.setName("P2");
+        playerRepository.save(p2);
+
+        PlayerMatchReview rPending = PlayerMatchReview.builder()
+            .source("WHOSCORED").externalId("960").candidatePlayerId(p1.getId()).score(0.8).status(ReviewStatus.PENDING).createdAt(java.time.LocalDateTime.now()).build();
+        PlayerMatchReview rRejected = PlayerMatchReview.builder()
+            .source("WHOSCORED").externalId("960").candidatePlayerId(p2.getId()).score(0.7).status(ReviewStatus.REJECTED).createdAt(java.time.LocalDateTime.now()).build();
+        reviewRepository.saveAll(List.of(rPending, rRejected));
+
+        persister.deletePendingReviews("WHOSCORED", "960");
+        assertThat(reviewRepository.findBySourceAndExternalId("WHOSCORED", "960")).hasSize(1);
+        assertThat(reviewRepository.findBySourceAndExternalId("WHOSCORED", "960").get(0).getStatus()).isEqualTo(ReviewStatus.REJECTED);
+
+        persister.deleteReviews("WHOSCORED", "960");
+        assertThat(reviewRepository.findBySourceAndExternalId("WHOSCORED", "960")).isEmpty();
+    }
+
+    @Test
+    void test12_admin5bEndpoints() throws Exception {
+        Player p1 = new Player();
+        p1.setExternalId(200L);
+        p1.setName("Candidate One");
+        p1.setTeam("Team X");
+        playerRepository.save(p1);
+
+        createMockPageJson("page_1.json", 1100L, "Review Player", "Team X", 600);
+        importService.importLeague(tempLeagueDir.toString());
+
+        PlayerMatchReview rev = PlayerMatchReview.builder()
+            .source("WHOSCORED")
+            .externalId("1100")
+            .candidatePlayerId(p1.getId())
+            .score(0.9)
+            .reason("SIMILARITY")
+            .status(ReviewStatus.PENDING)
+            .createdAt(java.time.LocalDateTime.now())
+            .build();
+        reviewRepository.save(rev);
+
+        // 1. GET /admin/player-links/reviews
+        mockMvc.perform(get("/admin/player-links/reviews?page=0&size=20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content[0].whoscoredPlayerId").value(1100))
+                .andExpect(jsonPath("$.content[0].totalMinutes").value(600))
+                .andExpect(jsonPath("$.content[0].candidates[0].playerId").value(p1.getId()));
+
+        // 2. GET /admin/player-links/unmatched/{id}/candidates
+        mockMvc.perform(get("/admin/player-links/unmatched/1100/candidates"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.player.whoscoredPlayerId").value(1100))
+                .andExpect(jsonPath("$.candidates").isArray());
+
+        // Non-existent id -> 404
+        mockMvc.perform(get("/admin/player-links/unmatched/9999/candidates"))
+                .andExpect(status().isNotFound());
+
+        // 3. GET /admin/player-links/links/to-confirm
+        PlayerSourceId linkToConfirm = PlayerSourceId.builder()
+            .source("WHOSCORED")
+            .externalId("1100")
+            .playerId(p1.getId())
+            .matchMethod("FUZZY_TEAM")
+            .confidence(java.math.BigDecimal.valueOf(0.9))
+            .needsReview(true)
+            .createdAt(java.time.LocalDateTime.now())
+            .build();
+        sourceRepository.save(linkToConfirm);
+
+        mockMvc.perform(get("/admin/player-links/links/to-confirm"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].whoscoredPlayerId").value(1100));
+
+        // 4. GET /admin/player-links/summary
+        mockMvc.perform(get("/admin/player-links/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pendingReviews").exists())
+                .andExpect(jsonPath("$.linksToConfirm").exists());
     }
 }

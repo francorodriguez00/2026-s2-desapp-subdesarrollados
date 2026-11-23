@@ -20,17 +20,20 @@ public class PlayerLinkService {
     private final PlayerMatcherService matcherService;
 
     private final PlayerRepository playerRepository;
+    private final PlayerMatchReviewRepository reviewRepository;
 
     public PlayerLinkService(PlayerSeasonStatsRepository statsRepository, 
                              PlayerSourceIdRepository sourceRepository,
                              PlayerLinkResolver resolver, 
                              PlayerMatcherService matcherService,
-                             PlayerRepository playerRepository) {
+                             PlayerRepository playerRepository,
+                             PlayerMatchReviewRepository reviewRepository) {
         this.statsRepository = statsRepository;
         this.sourceRepository = sourceRepository;
         this.resolver = resolver;
         this.matcherService = matcherService;
         this.playerRepository = playerRepository;
+        this.reviewRepository = reviewRepository;
     }
 
     @Transactional(readOnly = true)
@@ -41,9 +44,11 @@ public class PlayerLinkService {
         long wsPlayersTotal = statsRepository.countDistinctWhoscoredPlayerId();
         long wsPlayersLinked = statsRepository.countDistinctWhoscoredPlayerIdLinked();
         long wsPlayersUnlinked = wsPlayersTotal - wsPlayersLinked;
+        long pendingReviews = reviewRepository.countPendingUnlinkedExternalIds();
+        long linksToConfirm = sourceRepository.countBySourceAndNeedsReview("WHOSCORED", true);
 
         return new com.furbo.adapter.dto.PlayerLinkSummaryDTO(
-            players, playersWithLink, playersWithoutLink, wsPlayersTotal, wsPlayersLinked, wsPlayersUnlinked
+            players, playersWithLink, playersWithoutLink, wsPlayersTotal, wsPlayersLinked, wsPlayersUnlinked, pendingReviews, linksToConfirm
         );
     }
 

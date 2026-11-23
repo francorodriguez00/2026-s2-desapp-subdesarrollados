@@ -33,6 +33,31 @@ public class PlayerLinkAdminController {
         return ResponseEntity.ok(playerLinkService.getUnmatched(page, size));
     }
 
+    @GetMapping("/reviews")
+    @Operation(summary = "Revisiones pendientes agrupadas", description = "Retorna lista paginada de revisiones pendientes agrupadas por jugador de WhoScored.")
+    public ResponseEntity<PagedReviewItemsDTO> reviews(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(adminService.getPendingReviews(page, size));
+    }
+
+    @GetMapping("/unmatched/{whoscoredId}/candidates")
+    @Operation(summary = "Candidatos para jugador WhoScored sin vincular", description = "Retorna el resumen de WhoScored y candidatos potenciales para un jugador sin vincular.")
+    public ResponseEntity<UnmatchedCandidatesResponseDTO> unmatchedCandidates(
+            @PathVariable Long whoscoredId,
+            @RequestParam(required = false) String name,
+            @RequestParam(defaultValue = "50") int size) {
+        return ResponseEntity.ok(adminService.getUnmatchedCandidates(whoscoredId, name, size));
+    }
+
+    @GetMapping("/links/to-confirm")
+    @Operation(summary = "Vínculos para confirmar", description = "Retorna lista paginada de vínculos marcados con needsReview = true.")
+    public ResponseEntity<PagedToConfirmDTO> toConfirm(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(adminService.getToConfirmLinks(page, size));
+    }
+
     @PostMapping("/relink")
     @Operation(summary = "Relink all players", description = "Recalcula todos los vínculos de WhoScored.")
     public ResponseEntity<?> relink() {
