@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -225,7 +226,7 @@ public class PlayerLinkAdminService {
         Map<Long, Player> playersMap = playerRepository.findAllById(candidatePlayerIds).stream()
             .collect(java.util.stream.Collectors.toMap(Player::getId, p -> p));
 
-        Map<Long, String> playerToWsIdMap = sourceRepository.findAllBySource("WHOSCORED").stream()
+        Map<Long, String> playerToWsIdMap = sourceRepository.findBySourceAndPlayerIdIn("WHOSCORED", candidatePlayerIds).stream()
             .collect(java.util.stream.Collectors.toMap(PlayerSourceId::getPlayerId, PlayerSourceId::getExternalId, (e1, e2) -> e1));
 
         List<com.furbo.adapter.dto.ReviewItemGroupDTO> content = new ArrayList<>();
@@ -248,8 +249,9 @@ public class PlayerLinkAdminService {
                 .mapToInt(s -> s.getMinsPlayed() != null ? s.getMinsPlayed() : 0)
                 .sum();
 
-            List<PlayerMatchReview> extReviews = reviewsGrouped.getOrDefault(extId, List.of());
-            extReviews.sort(Comparator.comparingDouble(PlayerMatchReview::getScore).reversed());
+            List<PlayerMatchReview> revs = reviewsGrouped.get(extId);
+            List<PlayerMatchReview> extReviews = revs != null ? new ArrayList<>(revs) : new ArrayList<>();
+            extReviews.sort(Comparator.comparingDouble((PlayerMatchReview r) -> r.getScore() != null ? r.getScore() : 0.0).reversed());
 
             List<com.furbo.adapter.dto.ReviewCandidateDTO> candidateDTOs = new ArrayList<>();
             for (PlayerMatchReview r : extReviews) {
@@ -420,10 +422,24 @@ public class PlayerLinkAdminService {
         long totalElements = pageLinks.getTotalElements();
         int totalPages = pageLinks.getTotalPages();
 
+        if (links.isEmpty()) {
+            return new com.furbo.adapter.dto.PagedToConfirmDTO(List.of(), normPage, normSize, totalElements, totalPages);
+        }
+
+        List<Long> wsIds = links.stream().map(s -> Long.parseLong(s.getExternalId())).toList();
+        List<Long> playerIds = links.stream().map(PlayerSourceId::getPlayerId).toList();
+
+        List<PlayerSeasonStats> allStats = statsRepository.findByWhoscoredPlayerIdIn(wsIds);
+        Map<Long, List<PlayerSeasonStats>> statsGrouped = allStats.stream()
+            .collect(Collectors.groupingBy(PlayerSeasonStats::getWhoscoredPlayerId));
+
+        Map<Long, Player> playersMap = playerRepository.findAllById(playerIds).stream()
+            .collect(Collectors.toMap(Player::getId, p -> p, (p1, p2) -> p1));
+
         List<com.furbo.adapter.dto.ToConfirmItemDTO> content = new ArrayList<>();
         for (PlayerSourceId s : links) {
             Long wsId = Long.parseLong(s.getExternalId());
-            List<PlayerSeasonStats> stats = statsRepository.findByWhoscoredPlayerId(wsId);
+            List<PlayerSeasonStats> stats = statsGrouped.getOrDefault(wsId, List.of());
             PlayerSeasonStats best = stats.stream()
                 .max(Comparator.comparingInt(st -> st.getMinsPlayed() != null ? st.getMinsPlayed() : 0))
                 .orElse(stats.isEmpty() ? null : stats.get(0));
@@ -438,7 +454,7 @@ public class PlayerLinkAdminService {
                 .mapToInt(st -> st.getMinsPlayed() != null ? st.getMinsPlayed() : 0)
                 .sum();
 
-            Player p = playerRepository.findById(s.getPlayerId()).orElse(null);
+            Player p = playersMap.get(s.getPlayerId());
 
             content.add(new com.furbo.adapter.dto.ToConfirmItemDTO(
                 wsId,

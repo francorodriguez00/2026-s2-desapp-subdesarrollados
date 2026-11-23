@@ -29,12 +29,13 @@ public interface PlayerMatchReviewRepository extends JpaRepository<PlayerMatchRe
     @Query(value = """
         SELECT r.external_id \
         FROM player_match_review r \
-        JOIN player_season_stats st ON st.whoscored_player_id = CAST(r.external_id AS BIGINT) \
         WHERE r.source = 'WHOSCORED' \
           AND (r.status IS NULL OR r.status = 'PENDING') \
           AND r.external_id NOT IN (SELECT s.external_id FROM player_source_id s WHERE s.source = 'WHOSCORED') \
+          AND EXISTS (SELECT 1 FROM player_season_stats st WHERE st.whoscored_player_id = CAST(r.external_id AS BIGINT)) \
         GROUP BY r.external_id \
-        ORDER BY SUM(st.mins_played) DESC, CAST(r.external_id AS BIGINT) ASC \
+        ORDER BY COALESCE((SELECT SUM(st.mins_played) FROM player_season_stats st WHERE st.whoscored_player_id = CAST(r.external_id AS BIGINT)), 0) DESC, \
+                 CAST(r.external_id AS BIGINT) ASC \
         """, 
         countQuery = """
         SELECT COUNT(DISTINCT r.external_id) \
@@ -42,6 +43,7 @@ public interface PlayerMatchReviewRepository extends JpaRepository<PlayerMatchRe
         WHERE r.source = 'WHOSCORED' \
           AND (r.status IS NULL OR r.status = 'PENDING') \
           AND r.external_id NOT IN (SELECT s.external_id FROM player_source_id s WHERE s.source = 'WHOSCORED') \
+          AND EXISTS (SELECT 1 FROM player_season_stats st WHERE st.whoscored_player_id = CAST(r.external_id AS BIGINT)) \
         """, 
         nativeQuery = true)
     Page<String> findPendingUnlinkedExternalIds(Pageable pageable);
@@ -52,6 +54,7 @@ public interface PlayerMatchReviewRepository extends JpaRepository<PlayerMatchRe
         WHERE r.source = 'WHOSCORED' \
           AND (r.status IS NULL OR r.status = 'PENDING') \
           AND r.external_id NOT IN (SELECT s.external_id FROM player_source_id s WHERE s.source = 'WHOSCORED') \
+          AND EXISTS (SELECT 1 FROM player_season_stats st WHERE st.whoscored_player_id = CAST(r.external_id AS BIGINT)) \
         """, nativeQuery = true)
     long countPendingUnlinkedExternalIds();
 

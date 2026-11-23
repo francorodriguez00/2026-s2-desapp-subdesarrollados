@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -65,6 +66,9 @@ class PlayerLinkAdminIntegrationTest {
 
     @Autowired
     private PlayerMatchingPersister persister;
+
+    @Autowired
+    private jakarta.persistence.EntityManagerFactory entityManagerFactory;
 
     private Path tempLeagueDir;
 
@@ -500,65 +504,190 @@ class PlayerLinkAdminIntegrationTest {
     }
 
     @Test
-    void test12_admin5bEndpoints() throws Exception {
-        Player p1 = new Player();
-        p1.setExternalId(200L);
-        p1.setName("Candidate One");
-        p1.setTeam("Team X");
-        playerRepository.save(p1);
+    void testReviewsSortingAndMinutes() throws Exception {
+        Player p1 = new Player(); p1.setExternalId(201L); p1.setName("C1"); p1.setTeam("Team A"); playerRepository.save(p1);
+        Player p2 = new Player(); p2.setExternalId(202L); p2.setName("C2"); p2.setTeam("Team A"); playerRepository.save(p2);
+        Player p3 = new Player(); p3.setExternalId(203L); p3.setName("C3"); p3.setTeam("Team A"); playerRepository.save(p3);
 
-        createMockPageJson("page_1.json", 1100L, "Review Player", "Team X", 600);
-        importService.importLeague(tempLeagueDir.toString());
+        // Id 2000: 100 mins, 3 candidates (would weigh 300 with old bug)
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(2000L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("Player A").teamName("Team A").minsPlayed(100).build());
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("2000").candidatePlayerId(p1.getId()).score(0.9).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("2000").candidatePlayerId(p2.getId()).score(0.8).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("2000").candidatePlayerId(p3.getId()).score(0.7).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
 
-        PlayerMatchReview rev = PlayerMatchReview.builder()
-            .source("WHOSCORED")
-            .externalId("1100")
-            .candidatePlayerId(p1.getId())
-            .score(0.9)
-            .reason("SIMILARITY")
-            .status(ReviewStatus.PENDING)
-            .createdAt(java.time.LocalDateTime.now())
-            .build();
-        reviewRepository.save(rev);
+        // Id 1000: 250 mins, 1 candidate
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(1000L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("Player B").teamName("Team A").minsPlayed(250).build());
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("1000").candidatePlayerId(p1.getId()).score(0.85).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
 
-        // 1. GET /admin/player-links/reviews
-        mockMvc.perform(get("/admin/player-links/reviews?page=0&size=20"))
+        // Id 500: null mins, 1 candidate (should go last)
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(500L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("Player C").teamName("Team A").minsPlayed(null).build());
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("500").candidatePlayerId(p2.getId()).score(0.8).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+
+        mockMvc.perform(get("/admin/player-links/reviews?page=0&size=10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content").isArray())
-                .andExpect(jsonPath("$.content[0].whoscoredPlayerId").value(1100))
+                .andExpect(jsonPath("$.content[0].whoscoredPlayerId").value(1000))
+                .andExpect(jsonPath("$.content[1].whoscoredPlayerId").value(2000))
+                .andExpect(jsonPath("$.content[2].whoscoredPlayerId").value(500));
+    }
+
+    @Test
+    void testReviewsDetailsAndExclusions() throws Exception {
+        Player pFree = new Player(); pFree.setExternalId(301L); pFree.setName("Free"); pFree.setTeam("Arsenal"); playerRepository.save(pFree);
+        Player pLinked = new Player(); pLinked.setExternalId(302L); pLinked.setName("Linked"); pLinked.setTeam("Arsenal"); playerRepository.save(pLinked);
+        sourceRepository.save(PlayerSourceId.builder().source("WHOSCORED").externalId("9999").playerId(pLinked.getId()).matchMethod("MANUAL").confidence(java.math.BigDecimal.ONE).needsReview(false).createdAt(LocalDateTime.now()).build());
+
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(4000L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("Saka").teamName("Arsenal").minsPlayed(400).build());
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(4000L).whoscoredTeamId(2).tournamentId(1).seasonId(2024).name("Saka").teamName("Arsenal").minsPlayed(200).build());
+
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("4000").candidatePlayerId(pFree.getId()).score(0.7).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("4000").candidatePlayerId(pLinked.getId()).score(0.95).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+        // Rejected review should be excluded
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("4000").candidatePlayerId(p3IdForTest(pFree)).score(0.99).status(ReviewStatus.REJECTED).createdAt(LocalDateTime.now()).build());
+
+        // Already linked externalId "9999" should be excluded even if it has pending reviews
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("9999").candidatePlayerId(pFree.getId()).score(0.9).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+
+        mockMvc.perform(get("/admin/player-links/reviews?page=0&size=10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].whoscoredPlayerId").value(4000))
                 .andExpect(jsonPath("$.content[0].totalMinutes").value(600))
-                .andExpect(jsonPath("$.content[0].candidates[0].playerId").value(p1.getId()));
+                .andExpect(jsonPath("$.content[0].candidates[0].playerId").value(pLinked.getId()))
+                .andExpect(jsonPath("$.content[0].candidates[0].linkedToWhoscoredId").value("9999"))
+                .andExpect(jsonPath("$.content[0].candidates[1].playerId").value(pFree.getId()))
+                .andExpect(jsonPath("$.content[0].candidates[1].linkedToWhoscoredId").isEmpty());
+    }
 
-        // 2. GET /admin/player-links/unmatched/{id}/candidates
-        mockMvc.perform(get("/admin/player-links/unmatched/1100/candidates"))
+    private Long p3IdForTest(Player fallback) {
+        Player p = new Player(); p.setExternalId(303L); p.setName("Rejected"); p.setTeam("Arsenal"); playerRepository.save(p);
+        return p.getId();
+    }
+
+    @Test
+    void testReviewsPaginationAndNormalization() throws Exception {
+        mockMvc.perform(get("/admin/player-links/reviews?page=-1&size=0"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.player.whoscoredPlayerId").value(1100))
-                .andExpect(jsonPath("$.candidates").isArray());
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(1));
+
+        mockMvc.perform(get("/admin/player-links/reviews?page=0&size=1000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(200));
+    }
+
+    @Test
+    void testCandidatesEndpoint() throws Exception {
+        Player pMatch = new Player(); pMatch.setExternalId(401L); pMatch.setName("Bukayo Saka"); pMatch.setTeam("Arsenal"); playerRepository.save(pMatch);
+        Player pOtherTeam = new Player(); pOtherTeam.setExternalId(402L); pOtherTeam.setName("Bukayo Saka"); pOtherTeam.setTeam("Chelsea"); playerRepository.save(pOtherTeam);
+        Player pLinked = new Player(); pLinked.setExternalId(403L); pLinked.setName("Bukayo Saka"); pLinked.setTeam("Arsenal"); playerRepository.save(pLinked);
+        sourceRepository.save(PlayerSourceId.builder().source("WHOSCORED").externalId("8888").playerId(pLinked.getId()).matchMethod("MANUAL").confidence(java.math.BigDecimal.ONE).needsReview(false).createdAt(LocalDateTime.now()).build());
+
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(5000L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("Bukayo Saka").teamName("Arsenal").minsPlayed(500).build());
+
+        // Without name: only same team unlinked, excludes linked and other team
+        mockMvc.perform(get("/admin/player-links/unmatched/5000/candidates"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.candidates[0].playerId").value(pMatch.getId()))
+                .andExpect(jsonPath("$.candidates[0].score").isNumber())
+                .andExpect(jsonPath("$.candidates[0].rule").isString());
+
+        // With name: filters by normalized name in any team, excludes linked
+        mockMvc.perform(get("/admin/player-links/unmatched/5000/candidates?name=Bukayo"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.candidates", org.hamcrest.Matchers.hasSize(2))); // pMatch and pOtherTeam
 
         // Non-existent id -> 404
-        mockMvc.perform(get("/admin/player-links/unmatched/9999/candidates"))
+        mockMvc.perform(get("/admin/player-links/unmatched/99999/candidates"))
                 .andExpect(status().isNotFound());
+    }
 
-        // 3. GET /admin/player-links/links/to-confirm
-        PlayerSourceId linkToConfirm = PlayerSourceId.builder()
-            .source("WHOSCORED")
-            .externalId("1100")
-            .playerId(p1.getId())
-            .matchMethod("FUZZY_TEAM")
-            .confidence(java.math.BigDecimal.valueOf(0.9))
-            .needsReview(true)
-            .createdAt(java.time.LocalDateTime.now())
-            .build();
-        sourceRepository.save(linkToConfirm);
+    @Test
+    void testToConfirmEndpointAndConfirmAction() throws Exception {
+        Player p = new Player(); p.setExternalId(501L); p.setName("Martin Ødegaard"); p.setTeam("Arsenal"); playerRepository.save(p);
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(6000L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("M. Odegaard").teamName("Arsenal").minsPlayed(800).build());
+
+        PlayerSourceId link = PlayerSourceId.builder()
+            .source("WHOSCORED").externalId("6000").playerId(p.getId()).matchMethod("FUZZY_TEAM").confidence(java.math.BigDecimal.valueOf(0.9)).needsReview(true).createdAt(LocalDateTime.now()).build();
+        sourceRepository.save(link);
 
         mockMvc.perform(get("/admin/player-links/links/to-confirm"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].whoscoredPlayerId").value(1100));
+                .andExpect(jsonPath("$.content", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$.content[0].whoscoredPlayerId").value(6000));
 
-        // 4. GET /admin/player-links/summary
+        // Confirm
+        mockMvc.perform(post("/admin/player-links/links/6000/confirm"))
+                .andExpect(status().isOk());
+
+        // After confirm, should no longer appear in to-confirm
+        mockMvc.perform(get("/admin/player-links/links/to-confirm"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", org.hamcrest.Matchers.hasSize(0)));
+    }
+
+    @Test
+    void testSummaryPendingAndLinksToConfirm() throws Exception {
+        Player p1 = new Player(); p1.setExternalId(601L); p1.setName("P1"); p1.setTeam("Team A"); playerRepository.save(p1);
+        Player p2 = new Player(); p2.setExternalId(602L); p2.setName("P2"); p2.setTeam("Team A"); playerRepository.save(p2);
+        Player p3 = new Player(); p3.setExternalId(603L); p3.setName("P3"); p3.setTeam("Team A"); playerRepository.save(p3);
+        Player p4 = new Player(); p4.setExternalId(604L); p4.setName("P4"); p4.setTeam("Team A"); playerRepository.save(p4);
+        Player p5 = new Player(); p5.setExternalId(605L); p5.setName("P5"); p5.setTeam("Team A"); playerRepository.save(p5);
+
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(7001L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("S1").teamName("Team A").minsPlayed(100).build());
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(7002L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("S2").teamName("Team A").minsPlayed(100).build());
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(7003L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("S3").teamName("Team A").minsPlayed(100).build());
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(7005L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("S5").teamName("Team A").minsPlayed(100).build());
+        statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(7006L).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("S6").teamName("Team A").minsPlayed(100).build());
+
+        // 2 pending reviews (unlinked)
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("7001").candidatePlayerId(p1.getId()).score(0.8).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("7002").candidatePlayerId(p2.getId()).score(0.8).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+        // 1 rejected review (should not count as pending review)
+        reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId("7003").candidatePlayerId(p3.getId()).score(0.8).status(ReviewStatus.REJECTED).createdAt(LocalDateTime.now()).build());
+
+        // 2 links with needs_review = true
+        sourceRepository.save(PlayerSourceId.builder().source("WHOSCORED").externalId("7005").playerId(p4.getId()).matchMethod("FUZZY").confidence(java.math.BigDecimal.ONE).needsReview(true).createdAt(LocalDateTime.now()).build());
+        sourceRepository.save(PlayerSourceId.builder().source("WHOSCORED").externalId("7006").playerId(p5.getId()).matchMethod("FUZZY").confidence(java.math.BigDecimal.ONE).needsReview(true).createdAt(LocalDateTime.now()).build());
+
         mockMvc.perform(get("/admin/player-links/summary"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.pendingReviews").exists())
-                .andExpect(jsonPath("$.linksToConfirm").exists());
+                .andExpect(jsonPath("$.pendingReviews").value(2))
+                .andExpect(jsonPath("$.linksToConfirm").value(2));
+    }
+
+    @Test
+    void testNoNPlusOneQueriesForReviewsAndToConfirm() throws Exception {
+        org.hibernate.SessionFactory sessionFactory = entityManagerFactory.unwrap(org.hibernate.SessionFactory.class);
+        var stats = sessionFactory.getStatistics();
+        stats.setStatisticsEnabled(true);
+
+        for (int i = 1; i <= 3; i++) {
+            Player p = new Player(); p.setExternalId(1000L + i); p.setName("Player " + i); p.setTeam("Team A"); playerRepository.save(p);
+            statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(8000L + i).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("S" + i).teamName("Team A").minsPlayed(100).build());
+            reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId(String.valueOf(8000L + i)).candidatePlayerId(p.getId()).score(0.8).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+        }
+
+        stats.clear();
+        mockMvc.perform(get("/admin/player-links/reviews?page=0&size=10"))
+                .andExpect(status().isOk());
+        long queries3 = stats.getQueryExecutionCount();
+
+        reviewRepository.deleteAll();
+        statsRepository.deleteAll();
+        playerRepository.deleteAll();
+
+        for (int i = 1; i <= 12; i++) {
+            Player p = new Player(); p.setExternalId(2000L + i); p.setName("Player " + i); p.setTeam("Team A"); playerRepository.save(p);
+            statsRepository.save(PlayerSeasonStats.builder().whoscoredPlayerId(9000L + i).whoscoredTeamId(1).tournamentId(1).seasonId(2024).name("S" + i).teamName("Team A").minsPlayed(100).build());
+            reviewRepository.save(PlayerMatchReview.builder().source("WHOSCORED").externalId(String.valueOf(9000L + i)).candidatePlayerId(p.getId()).score(0.8).status(ReviewStatus.PENDING).createdAt(LocalDateTime.now()).build());
+        }
+
+        stats.clear();
+        mockMvc.perform(get("/admin/player-links/reviews?page=0&size=20"))
+                .andExpect(status().isOk());
+        long queries12 = stats.getQueryExecutionCount();
+
+        assertThat(queries12).isEqualTo(queries3);
     }
 }
