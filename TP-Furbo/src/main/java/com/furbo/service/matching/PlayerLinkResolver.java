@@ -6,6 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 
 @Service
 @Slf4j
@@ -104,6 +107,25 @@ public class PlayerLinkResolver {
             outcome = matcherService.matchFuzzy(ref, ctx);
         }
 
+        Set<Long> rejectedIds = persister.getRejectedCandidateIds("WHOSCORED", wsId);
+        if (outcome instanceof MatchOutcome.Linked linked) {
+            if (rejectedIds.contains(linked.playerId())) {
+                outcome = new MatchOutcome.Unmatched();
+            }
+        } else if (outcome instanceof MatchOutcome.Review review) {
+            List<MatchOutcome.Review.Candidate> filtered = new ArrayList<>();
+            for (MatchOutcome.Review.Candidate c : review.candidates()) {
+                if (!rejectedIds.contains(c.playerId())) {
+                    filtered.add(c);
+                }
+            }
+            if (filtered.isEmpty()) {
+                outcome = new MatchOutcome.Unmatched();
+            } else if (filtered.size() < review.candidates().size()) {
+                outcome = new MatchOutcome.Review(filtered);
+            }
+        }
+
         if (outcome instanceof MatchOutcome.Linked linked) {
             boolean needsReview = "FUZZY_TEAM".equals(linked.method());
             LinkResult res = persister.link(wsId, linked.playerId(), linked.method(), linked.confidence(), needsReview);
@@ -125,7 +147,7 @@ public class PlayerLinkResolver {
             return LinkOutcome.builder().outcome(LinkOutcome.Type.REVIEW).build();
         }
 
-        persister.deleteReviews("WHOSCORED", wsId);
+        persister.deletePendingReviews("WHOSCORED", wsId);
         return LinkOutcome.builder().outcome(LinkOutcome.Type.UNMATCHED).build();
     }
 

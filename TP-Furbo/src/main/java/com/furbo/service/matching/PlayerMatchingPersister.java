@@ -2,7 +2,7 @@ package com.furbo.service.matching;
 
 import com.furbo.model.PlayerMatchReview;
 import com.furbo.model.PlayerSourceId;
-import com.furbo.model.PlayerSeasonStats;
+import com.furbo.model.ReviewStatus;
 import com.furbo.repository.PlayerMatchReviewRepository;
 import com.furbo.repository.PlayerSourceIdRepository;
 import com.furbo.repository.PlayerSeasonStatsRepository;
@@ -13,6 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.ArrayList;
 
 @Service
 @Slf4j
@@ -36,6 +39,15 @@ public class PlayerMatchingPersister {
 
     public Optional<PlayerSourceId> findExistingByPlayerId(Long playerId) {
         return sourceRepository.findByPlayerIdAndSource(playerId, "WHOSCORED");
+    }
+
+    public Set<Long> getRejectedCandidateIds(String source, String externalId) {
+        List<PlayerMatchReview> rejected = reviewRepository.findRejectedBySourceAndExternalId(source, externalId);
+        Set<Long> ids = new HashSet<>();
+        for (PlayerMatchReview r : rejected) {
+            ids.add(r.getCandidatePlayerId());
+        }
+        return ids;
     }
 
     @Transactional
@@ -71,14 +83,38 @@ public class PlayerMatchingPersister {
 
     @Transactional
     public void saveReviews(String source, String externalId, List<MatchOutcome.Review.Candidate> candidates) {
-        List<Long> candidateIds = new java.util.ArrayList<>();
+        Set<Long> rejectedIds = getRejectedCandidateIds(source, externalId);
+        List<MatchOutcome.Review.Candidate> filtered = new ArrayList<>();
         for (MatchOutcome.Review.Candidate c : candidates) {
-            candidateIds.add(c.playerId());
-            Optional<PlayerMatchReview> existing = reviewRepository.findBySourceAndExternalIdAndCandidatePlayerId(source, externalId, c.playerId());
-            if (existing.isPresent()) {
-                PlayerMatchReview rev = existing.get();
+            if (!rejectedIds.contains(c.playerId())) {
+                filtered.add(c);
+            }
+        }
+
+        if (filtered.isEmpty()) {
+            reviewRepository.deletePendingBySourceAndExternalId(source, externalId);
+            return;
+        }
+
+        List<Long> validCandidateIds = new ArrayList<>();
+        for (MatchOutcome.Review.Candidate c : filtered) {
+            validCandidateIds.add(c.playerId());
+            List<PlayerMatchReview> existingList = reviewRepository.findBySourceAndExternalIdAndCandidatePlayerId(source, externalId, c.playerId());
+            if (!existingList.isEmpty()) {
+                PlayerMatchReview rev = existingList.get(0);
+                if (existingList.size() > 1) {
+                    for (int i = 1; i < existingList.size(); i++) {
+                        reviewRepository.delete(existingList.get(i));
+                    }
+                }
+                if (rev.getStatus() == ReviewStatus.REJECTED) {
+                    continue;
+                }
                 rev.setScore(c.score());
                 rev.setReason(c.reason());
+                if (rev.getStatus() == null) {
+                    rev.setStatus(ReviewStatus.PENDING);
+                }
                 reviewRepository.save(rev);
             } else {
                 PlayerMatchReview rev = PlayerMatchReview.builder()
@@ -87,18 +123,24 @@ public class PlayerMatchingPersister {
                     .candidatePlayerId(c.playerId())
                     .score(c.score())
                     .reason(c.reason())
+                    .status(ReviewStatus.PENDING)
                     .createdAt(LocalDateTime.now())
                     .build();
                 reviewRepository.save(rev);
             }
         }
-        if (!candidateIds.isEmpty()) {
-            reviewRepository.deleteBySourceAndExternalIdAndCandidatePlayerIdNotIn(source, externalId, candidateIds);
+        if (!validCandidateIds.isEmpty()) {
+            reviewRepository.deletePendingNotIn(source, externalId, validCandidateIds);
         }
     }
 
     @Transactional
     public void deleteReviews(String source, String externalId) {
         reviewRepository.deleteBySourceAndExternalId(source, externalId);
+    }
+
+    @Transactional
+    public void deletePendingReviews(String source, String externalId) {
+        reviewRepository.deletePendingBySourceAndExternalId(source, externalId);
     }
 }

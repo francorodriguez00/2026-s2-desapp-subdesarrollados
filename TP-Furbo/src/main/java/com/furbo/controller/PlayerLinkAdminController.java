@@ -1,55 +1,78 @@
 package com.furbo.controller;
 
-import com.furbo.model.PlayerMatchReview;
-import com.furbo.repository.PlayerMatchReviewRepository;
+import com.furbo.adapter.dto.*;
+import com.furbo.service.matching.PlayerLinkAdminService;
 import com.furbo.service.matching.PlayerLinkService;
-import com.furbo.service.matching.PlayerMatchingPersister;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/admin/player-links")
 public class PlayerLinkAdminController {
 
-    private final PlayerMatchReviewRepository reviewRepository;
-    private final PlayerMatchingPersister persister;
     private final PlayerLinkService playerLinkService;
+    private final PlayerLinkAdminService adminService;
 
-    public PlayerLinkAdminController(PlayerMatchReviewRepository reviewRepository, 
-                                     PlayerMatchingPersister persister,
-                                     PlayerLinkService playerLinkService) {
-        this.reviewRepository = reviewRepository;
-        this.persister = persister;
+    public PlayerLinkAdminController(PlayerLinkService playerLinkService, PlayerLinkAdminService adminService) {
         this.playerLinkService = playerLinkService;
+        this.adminService = adminService;
     }
 
     @GetMapping("/summary")
     @Operation(summary = "Resumen de vínculos de jugadores", description = "Retorna contadores de jugadores totales, vinculados, no vinculados, y totales de WhoScored.")
-    public ResponseEntity<com.furbo.adapter.dto.PlayerLinkSummaryDTO> summary() {
+    public ResponseEntity<PlayerLinkSummaryDTO> summary() {
         return ResponseEntity.ok(playerLinkService.getSummary());
     }
 
     @GetMapping("/unmatched")
     @Operation(summary = "Jugadores de WhoScored sin vincular paginados", description = "Retorna lista paginada de jugadores de WhoScored sin player_id, ordenados por minutos totales descendente.")
-    public ResponseEntity<com.furbo.adapter.dto.PagedUnmatchedDTO> unmatched(
+    public ResponseEntity<PagedUnmatchedDTO> unmatched(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         return ResponseEntity.ok(playerLinkService.getUnmatched(page, size));
     }
 
     @PostMapping("/relink")
-    @Operation(summary = "Relink all players")
+    @Operation(summary = "Relink all players", description = "Recalcula todos los vínculos de WhoScored.")
     public ResponseEntity<?> relink() {
         return ResponseEntity.ok(playerLinkService.relinkAll());
     }
 
     @PostMapping("/reviews/{externalId}/approve")
-    @Operation(summary = "Aprobar match manual")
-    public ResponseEntity<?> approve(@PathVariable String externalId, @RequestBody Map<String, Long> body) {
-        persister.link(externalId, body.get("candidatePlayerId"), "MANUAL", 1.0);
-        return ResponseEntity.ok().build();
+    @Operation(summary = "Aprobar match candidato", description = "Aprueba un candidato de revisión pendiente y vincula el jugador manualmente.")
+    public ResponseEntity<LinkActionResultDTO> approve(
+            @PathVariable String externalId,
+            @RequestBody ApproveRequestDTO body) {
+        return ResponseEntity.ok(adminService.approve(externalId, body != null ? body.candidatePlayerId() : null));
+    }
+
+    @PostMapping("/reviews/{externalId}/reject")
+    @Operation(summary = "Rechazar match candidato", description = "Rechaza un candidato pendiente (o todos si no se indica candidato).")
+    public ResponseEntity<LinkActionResultDTO> reject(
+            @PathVariable String externalId,
+            @RequestBody(required = false) RejectRequestDTO body) {
+        Long candidateId = (body != null) ? body.candidatePlayerId() : null;
+        return ResponseEntity.ok(adminService.reject(externalId, candidateId));
+    }
+
+    @PostMapping("/links/{externalId}")
+    @Operation(summary = "Vincular jugador manualmente", description = "Vincula un externalId de WhoScored a un player_id de forma manual.")
+    public ResponseEntity<LinkActionResultDTO> linkManually(
+            @PathVariable String externalId,
+            @RequestBody LinkManualRequestDTO body) {
+        return ResponseEntity.ok(adminService.linkManually(externalId, body.playerId()));
+    }
+
+    @DeleteMapping("/links/{externalId}")
+    @Operation(summary = "Desvincular jugador", description = "Elimina el vínculo de un externalId y registra rechazo para evitar re-vinculación automática.")
+    public ResponseEntity<LinkActionResultDTO> unlink(@PathVariable String externalId) {
+        return ResponseEntity.ok(adminService.unlink(externalId));
+    }
+
+    @PostMapping("/links/{externalId}/confirm")
+    @Operation(summary = "Confirmar vínculo", description = "Marca needsReview como falso para el vínculo existente.")
+    public ResponseEntity<LinkActionResultDTO> confirm(@PathVariable String externalId) {
+        return ResponseEntity.ok(adminService.confirm(externalId));
     }
 }

@@ -17,6 +17,8 @@ public interface PlayerSeasonStatsRepository extends JpaRepository<PlayerSeasonS
 
     List<PlayerSeasonStats> findByPlayerId(Long playerId);
 
+    List<PlayerSeasonStats> findByWhoscoredPlayerId(Long whoscoredPlayerId);
+
     List<PlayerSeasonStats> findByPlayerIdIsNotNull();
 
     @Query("SELECT COUNT(DISTINCT s.whoscoredPlayerId) FROM PlayerSeasonStats s WHERE s.whoscoredPlayerId IS NOT NULL")
