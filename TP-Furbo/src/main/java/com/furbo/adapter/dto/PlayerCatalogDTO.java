@@ -1,0 +1,20 @@
+package com.furbo.adapter.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class PlayerCatalogDTO {
+    private Long id;
+    private String name;
+    private String position;
+    private String team;
+    private String league;
+    private BigDecimal price;
+}

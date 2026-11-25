@@ -1,0 +1,32 @@
+{
+  "epl": {
+    "nombre": "Premier League",
+    "regionId": 252,
+    "tournamentId": 2,
+    "stageId": 25544
+  },
+  "laliga": {
+    "nombre": "LaLiga",
+    "regionId": 206,
+    "tournamentId": 4,
+    "stageId": 25662
+  },
+  "seriea": {
+    "nombre": "Serie A",
+    "regionId": 108,
+    "tournamentId": 5,
+    "stageId": 25518
+  },
+  "bundesliga": {
+    "nombre": "Bundesliga",
+    "regionId": 81,
+    "tournamentId": 3,
+    "stageId": 25666
+  },
+  "ligue1": {
+    "nombre": "Ligue 1",
+    "regionId": 74,
+    "tournamentId": 22,
+    "stageId": 25554
+  }
+}
