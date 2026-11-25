@@ -5,7 +5,9 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "player_match_review")
+@Table(name = "player_match_review", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"source", "external_id", "candidate_player_id"})
+})
 @Data
 @Builder
 @NoArgsConstructor
@@ -20,5 +22,9 @@ public class PlayerMatchReview {
     private Long candidatePlayerId;
     private Double score;
     private String reason;
+    
+    @Enumerated(EnumType.STRING)
+    private ReviewStatus status;
+
     private LocalDateTime createdAt;
 }

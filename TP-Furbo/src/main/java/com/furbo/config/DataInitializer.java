@@ -4,6 +4,7 @@ import com.furbo.service.PlayerService;
 import com.furbo.service.SuperuserTokenService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Order(3)
 @Profile("!whoscored-import")
+@ConditionalOnProperty(name = "furbo.football-data.fetch-on-startup", havingValue = "true", matchIfMissing = true)
 public class DataInitializer implements ApplicationRunner {
 
     private final PlayerService playerService;
