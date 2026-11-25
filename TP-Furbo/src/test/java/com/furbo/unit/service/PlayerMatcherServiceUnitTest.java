@@ -113,4 +113,47 @@ class PlayerMatcherServiceUnitTest {
         assertThat(outcomeMulti).isInstanceOf(MatchOutcome.Linked.class);
         assertThat(((MatchOutcome.Linked) outcomeMulti).playerId()).isEqualTo(2L);
     }
+
+    private static Player player(long id, String name) {
+        Player p = new Player();
+        p.setId(id);
+        p.setName(name);
+        return p;
+    }
+
+    private static MatchContext ctx(Map<String, List<Player>> byName, Set<Long> linked) {
+        return new MatchContext(byName, new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), linked);
+    }
+
+    private static WhoScoredPlayerRef ref(String name) {
+        return new WhoScoredPlayerRef("1", name, "F", "L", List.of(), List.of(), "Forward");
+    }
+
+    @Test
+    void matchExact_conUnSoloCandidato_linkeaPorNombreExacto() {
+        MatchContext ctx = ctx(Map.of("lionel messi", List.of(player(1L, "Lionel Messi"))), new HashSet<>());
+        PlayerMatcherService service = new PlayerMatcherService(null, null, null, new FurboMatchingProperties());
+
+        MatchOutcome out = service.matchExact(ref("Lionel Messi"), ctx);
+
+        assertThat(out).isInstanceOf(MatchOutcome.Linked.class);
+        assertThat(((MatchOutcome.Linked) out).method()).isEqualTo("EXACT_NAME");
+        assertThat(((MatchOutcome.Linked) out).playerId()).isEqualTo(1L);
+    }
+
+    @Test
+    void matchExact_sinCandidatos_esUnmatched() {
+        PlayerMatcherService service = new PlayerMatcherService(null, null, null, new FurboMatchingProperties());
+
+        assertThat(service.matchExact(ref("Neymar"), ctx(new HashMap<>(), new HashSet<>())))
+                .isInstanceOf(MatchOutcome.Unmatched.class);
+    }
+
+    @Test
+    void matchExact_siElUnicoCandidatoYaEstaLinkeado_esUnmatched() {
+        MatchContext ctx = ctx(Map.of("lionel messi", List.of(player(1L, "Lionel Messi"))), new HashSet<>(Set.of(1L)));
+        PlayerMatcherService service = new PlayerMatcherService(null, null, null, new FurboMatchingProperties());
+
+        assertThat(service.matchExact(ref("Lionel Messi"), ctx)).isInstanceOf(MatchOutcome.Unmatched.class);
+    }
 }
