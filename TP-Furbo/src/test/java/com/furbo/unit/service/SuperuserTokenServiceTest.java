@@ -2,6 +2,7 @@ package com.furbo.unit.service;
 
 import com.furbo.model.*;
 import com.furbo.repository.*;
+import com.furbo.service.PriceProvider;
 import com.furbo.service.SuperuserTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,7 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import java.util.List;
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -21,7 +22,8 @@ public class SuperuserTokenServiceTest {
     @Mock private PortfolioRepository portfolioRepository;
     @Mock private PosicionPorJugadorRepository posicionRepository;
     @Mock private PlayerRepository playerRepository;
-    @Mock private SellOfferRepository sellOfferRepository; // <-- Agregado
+    @Mock private OrderRepository orderRepository;
+    @Mock private PriceProvider priceProvider;
 
     private SuperuserTokenService superuserTokenService;
 
@@ -32,7 +34,7 @@ public class SuperuserTokenServiceTest {
         MockitoAnnotations.openMocks(this);
         superuser = new User();
         superuser.setId(1L);
-        superuserTokenService = new SuperuserTokenService(userRepository, portfolioRepository, posicionRepository, playerRepository, sellOfferRepository);
+        superuserTokenService = new SuperuserTokenService(userRepository, portfolioRepository, posicionRepository, playerRepository, orderRepository, priceProvider);
     }
 
     @Test
@@ -62,17 +64,18 @@ public class SuperuserTokenServiceTest {
     void asignarTokens_NewPlayer_Assigns100() {
         Portfolio portfolio = new Portfolio();
         portfolio.setId(1L);
-        portfolio.setUser(superuser); // <-- Fix: asegurar que el portfolio tenga usuario
+        portfolio.setUser(superuser);
         when(userRepository.findByIsSuperuserTrue()).thenReturn(Optional.of(superuser));
         when(portfolioRepository.findByUser(superuser)).thenReturn(Optional.of(portfolio));
+        when(priceProvider.getCurrentPrice(any())).thenReturn(new BigDecimal("10.00"));
         
         Player player = new Player();
-        player.setExternalId(10L);
+        player.setId(10L);
         when(posicionRepository.findByPortfolioIdAndPlayerId(1L, 10L)).thenReturn(Optional.empty());
 
         superuserTokenService.asignarTokens(player);
 
         verify(posicionRepository).save(any(PosicionPorJugador.class));
-        verify(sellOfferRepository).save(any(SellOffer.class));
+        verify(orderRepository).save(any(Order.class));
     }
 }

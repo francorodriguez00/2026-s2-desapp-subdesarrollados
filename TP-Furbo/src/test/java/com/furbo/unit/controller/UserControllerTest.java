@@ -7,8 +7,10 @@ import com.furbo.model.Portfolio;
 import com.furbo.model.Transaction;
 import com.furbo.model.User;
 import com.furbo.repository.PortfolioRepository;
+import com.furbo.repository.PlayerRepository;
 import com.furbo.repository.TransactionRepository;
 import com.furbo.repository.UserRepository;
+import com.furbo.service.PriceProvider;
 import com.furbo.security.JwtAuthenticationFilter;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,6 +27,7 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,6 +46,8 @@ public class UserControllerTest {
     @MockBean private PortfolioRepository portfolioRepository;
     @MockBean private TransactionRepository transactionRepository;
     @MockBean private UserRepository userRepository;
+    @MockBean private PlayerRepository playerRepository;
+    @MockBean private PriceProvider priceProvider;
 
     private static final Principal PRINCIPAL = () -> "test@furbo.com";
 
@@ -78,8 +83,18 @@ public class UserControllerTest {
             User user = new User();
             user.setId(1L);
             user.setEmail("test@furbo.com");
+            Transaction tx = new Transaction();
+            tx.setOperationId("OP1");
+            tx.setPlayerId(2L);
+            tx.setBuyerId(1L);
+            tx.setSellerId(3L);
+            tx.setQuantity(1);
+            tx.setUnitPrice(java.math.BigDecimal.TEN);
+            tx.setCreatedAt(java.time.LocalDateTime.now());
+            
             when(userRepository.findByEmail("test@furbo.com")).thenReturn(Optional.of(user));
-            when(transactionRepository.findByBuyerIdOrSellerId(1L, 1L)).thenReturn(List.of(new Transaction()));
+            when(transactionRepository.findByBuyerIdOrSellerId(1L, 1L)).thenReturn(List.of(tx));
+            when(playerRepository.findById(2L)).thenReturn(Optional.of(new com.furbo.model.Player()));
 
             mockMvc.perform(get("/users/transactions")
                     .principal(PRINCIPAL)

@@ -26,6 +26,6 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         playerService.fetchAndSavePlayers();
-        // tokenService.sincronizarTodos(); // Eliminado para evitar sincronización masiva en arranque
+        tokenService.sincronizarTodos();
     }
 }

@@ -1,32 +1,45 @@
 package com.furbo.controller;
 
-import com.furbo.model.Player;
-import com.furbo.service.PlayerService;
+import com.furbo.adapter.dto.PlayerCatalogDTO;
+import com.furbo.repository.PlayerRepository;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/players")
 public class PlayerController {
 
-    private final PlayerService playerService;
+    private final PlayerRepository playerRepository;
 
-    public PlayerController(PlayerService playerService) {
-        this.playerService = playerService;
+    public PlayerController(PlayerRepository playerRepository) {
+        this.playerRepository = playerRepository;
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<com.furbo.model.Player> getPlayer(@PathVariable Long id) {
+        return ResponseEntity.of(playerRepository.findById(id));
     }
 
     @GetMapping
-    public ResponseEntity<Page<Player>> getPlayers(
+    public ResponseEntity<Page<PlayerCatalogDTO>> getPlayers(
             @RequestParam(required = false) String league,
             @RequestParam(required = false) String team,
             @RequestParam(required = false) String position,
-            @PageableDefault(size = 50, sort = {"name", "id"}) Pageable pageable) {
-        return ResponseEntity.ok(playerService.getPlayers(league, team, position, pageable));
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        return ResponseEntity.ok(playerRepository.findPlayersCatalog(
+                league == null ? "" : league,
+                position == null ? "" : position,
+                name == null ? "" : name,
+                date == null ? LocalDateTime.now() : date,
+                PageRequest.of(page, size)));
     }
 }

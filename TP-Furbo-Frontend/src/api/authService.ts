@@ -1,6 +1,8 @@
 export const login = async (credentials: any) => {
   const { data } = await api.post('/auth/login', credentials);
   sessionStorage.setItem('token', data.token);
+  if (data.name) sessionStorage.setItem('name', data.name);
+  if (data.email) sessionStorage.setItem('email', data.email);
   return data;
 };
 

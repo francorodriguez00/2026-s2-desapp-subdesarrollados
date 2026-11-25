@@ -51,6 +51,7 @@ public class AuthServiceTest {
         user = new User();
         user.setEmail("test@furbo.com");
         user.setPassword("hashedPassword");
+        user.setName("Test User");
     }
 
     @Test
@@ -58,6 +59,7 @@ public class AuthServiceTest {
         RegisterRequestDTO registerRequest = new RegisterRequestDTO();
         registerRequest.setEmail("newuser@furbo.com");
         registerRequest.setPassword("rawPassword");
+        registerRequest.setName("New User");
 
         when(passwordHasher.hash("rawPassword")).thenReturn("hashedPassword");
 
@@ -72,9 +74,10 @@ public class AuthServiceTest {
         when(passwordHasher.verify(loginRequest.getPassword(), user.getPassword())).thenReturn(true);
         when(jwtService.generateToken(user.getEmail())).thenReturn("dummyToken");
 
-        String token = authService.login(loginRequest);
+        com.furbo.adapter.dto.LoginResponseDTO response = authService.login(loginRequest);
 
-        assertEquals("dummyToken", token);
+        assertEquals("dummyToken", response.getToken());
+        assertEquals("Test User", response.getName());
         verify(jwtService).generateToken(user.getEmail());
     }
 
